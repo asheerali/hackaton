@@ -73,17 +73,28 @@ export interface Draft {
     reason_codes: number[]; status_codes: number[]; vendor_specific_codes: boolean; rule: Record<string, unknown>; reasoning: string };
   backtest: { ok: boolean; frames_matched_in_cluster?: number; frames_matched_outside_cluster?: number; frames_scanned?: number; groups_firing?: number };
   meta: { mode: string; note: string | null };
+  trigger: "manual" | "auto";
   adopted?: { entry_id: string; catalog_version: string; reclassified_events: number };
 }
 
 export interface FeedItem { t: number; kind: string; text: string; severity: string; ref: string | null }
+
+export interface AlertItem {
+  incident_id: string; catalog_id: string; title: string; severity: "critical" | "high" | "medium" | "low" | "info" | "unknown";
+  created_t: number; sensors: string[]; priority: string; source: string;
+}
+
+export interface IncidentApproval {
+  approved: boolean; priority: string; selected_sensors: string[]; note?: string | null; updated_t?: number;
+}
 
 export interface Snapshot {
   clock: { state: string; speed: number; source: string | null; duration: number | null; fps: number; t: number; frames: number };
   kpi: { devices: number; failing: number; attempts: number; connected: number; kicks: number; fast_rejects: number;
     open_incidents: number; probe_per_s: number; retry_pct: number; unknown: number; time_to_root_s: number | null };
   incidents: IncidentSummary[];
-  series: { site: SeriesPoint[]; channels: number[]; beacon_air_pct: Record<string, number>; retry_pct: Record<string, number> };
+  series: { site: SeriesPoint[]; channels: number[]; beacon_air_pct: Record<string, number>; retry_pct: Record<string, number>;
+    sensors: string[]; per_sensor: Record<string, Array<Record<string, number>>> };
   sensors: Sensor[];
   aps: { networks: { label: string; kind: string | null }[]; rows: { ap: string; sensor: string; channel: number; networks: Record<string, boolean>; joins: number; failures: number }[] };
   networks: { label: string; kind: string | null; attempts: number; connected: number }[];
@@ -94,6 +105,8 @@ export interface Snapshot {
   catalog: { version: string; entries: number; categories: number; extensions: number };
   data_quality: { key: string; t: number; text: string; sensors: string[] }[];
   proposals: Record<string, ProposalRecord>;
+  alerts: AlertItem[];
+  approvals: Record<string, IncidentApproval>;
   agent: { mode: string; model: string };
   clusters: Cluster[];
   drafts: Draft[];
@@ -133,6 +146,8 @@ export const api = {
   device: (id: string): Promise<DeviceRow & { story: StoryStep[] }> => fetch(`/api/devices/${id}`).then((r) => r.json()),
   fix: (id: string) => post<{ state: string }>(`/api/incidents/${id}/fix`),
   fixDecision: (id: string, decision: string, note?: string) => post(`/api/incidents/${id}/fix/decision`, { decision, note }),
+  approveIncident: (id: string, payload: { approve?: boolean; priority?: string; selected_sensors?: string[]; note?: string }) =>
+    post<IncidentApproval>(`/api/incidents/${id}/approval`, payload),
   draft: (clusterId: string) => post<{ state: string }>(`/api/discovery/${clusterId}/draft`),
   draftDecision: (id: string, decision: string, note?: string) => post<Draft>(`/api/discovery/drafts/${id}/decision`, { decision, note }),
   inject: (count = 25, code = 250) => post("/api/debug/inject-unknown", { count, code }),

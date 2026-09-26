@@ -151,6 +151,7 @@ class Engine:
         self.buckets: dict[int, dict[int, Bucket]] = defaultdict(dict)
         self.feed: deque = deque(maxlen=200)
         self.unknown: list[dict] = []
+        self.unknown_frame_by_id: dict[str, Frame] = {}
         self.observations: list[dict] = []
         self.frame_log: list[Frame] = []
         self.reask: dict[str, list] = defaultdict(list)
@@ -229,10 +230,26 @@ class Engine:
                "context": {"timeline": (d.story[-10:] if d else []),
                            "open_incidents": [i.id for i in self.inc.top_level() if i.status == "open"][:5]}}
         self.unknown.append(rec)
+        self.unknown_frame_by_id[rec["id"]] = f
         self._feed(f.t, "unknown", f"Unmatched event {rec['id']} ({kind}) saved for Part 3", "unknown", rec["id"])
         if self.out_dir:
             with (self.out_dir / "unknown_events.jsonl").open("a", encoding="utf-8") as fh:
                 fh.write(json.dumps(rec) + "\n")
+
+    def ingest_reclassified(self, event_ids: list[str], catalog_id: str) -> int:
+        """Turn events the catalog just learned to recognise into real incidents (re-runs the incident workflow)."""
+        n = 0
+        for eid in event_ids:
+            f = self.unknown_frame_by_id.get(eid)
+            if f is None:
+                continue
+            ch = self.sensors[f.s].channel if f.s in self.sensors else None
+            what = f"reclassified by Part 3: {f.kind} reason={f.reason} status={f.status} now mapped to {catalog_id}"
+            self._detect(Detection(catalog_id, f.t, "device" if f.client else "site", f.client or f"auto:{eid}",
+                                   sensor=f.s, ap=f.ap, device=f.client, net=f.net, channel=ch,
+                                   evidence=(f.s, f.n, what), confidence=0.7))
+            n += 1
+        return n
 
     def _flag(self, key: str, t: float, sensor: int | None = None, text: str = "") -> None:
         """Data-quality flag, one per kind; sensors showing it are accumulated."""

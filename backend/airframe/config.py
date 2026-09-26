@@ -87,3 +87,18 @@ OPENROUTER_MODEL = os.environ.get("AIRFRAME_OPENROUTER_MODEL", "deepseek/deepsee
 OPENROUTER_SITE_URL = os.environ.get("AIRFRAME_SITE_URL", "")   # optional, for OpenRouter's leaderboards
 OPENROUTER_SITE_NAME = os.environ.get("AIRFRAME_SITE_NAME", "Airframe")
 OPENROUTER_TIMEOUT_S = 60.0
+
+# Auto-analysis: a critical/high incident gets a fix proposal generated automatically
+# (no click needed) using a small/fast model, so it's ready the moment a person opens it.
+# DeepSeek's default model is already the "flash" (fast) variant; Claude gets a distinct
+# small model for this path since claude-opus-5 is not it.
+AGENT_AUTO_ANALYZE = os.environ.get("AIRFRAME_AUTO_ANALYZE", "1") == "1"
+AGENT_AUTO_SEVERITIES = {"critical", "high"}
+AGENT_FAST_CLAUDE_MODEL = os.environ.get("AIRFRAME_FAST_MODEL", "claude-haiku-4-5")
+
+# Auto-discovery (Part 3): an unmatched-event cluster past this size is drafted and, if it
+# passes validation + backtest, adopted into the catalog automatically - no human click -
+# then every event in the cluster is re-run through detection so it becomes a real incident.
+DISCOVERY_AUTO = os.environ.get("AIRFRAME_DISCOVERY_AUTO", "1") == "1"
+DISCOVERY_AUTO_MIN_COUNT = 3
+DISCOVERY_POLL_S = 2.0

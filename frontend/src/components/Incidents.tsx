@@ -4,6 +4,7 @@ import { Card, Sev, providerLabel, providerPill } from "./ui";
 
 export function Incidents({ snap, selected, select }: { snap: Snapshot; selected: string | null; select: (id: string) => void }) {
   const [filter, setFilter] = useState<"open" | "all">("open");
+  const [approval, setApproval] = useState<{ priority: string; selected_sensors: string[] }>({ priority: "P2", selected_sensors: [] });
   const list = snap.incidents.filter((i) => filter === "all" || i.status === "open");
   const current = selected ?? list[0]?.id ?? null;
   return (
@@ -21,15 +22,25 @@ export function Incidents({ snap, selected, select }: { snap: Snapshot; selected
           {!list.length && <div className="empty">No incidents.</div>}
         </div>
       </Card>
-      {current ? <Detail id={current} snap={snap} select={select} /> : <Card><div className="empty">Select an incident.</div></Card>}
+      {current ? <Detail id={current} snap={snap} select={select} approval={approval} setApproval={setApproval} /> : <Card><div className="empty">Select an incident.</div></Card>}
     </div>
   );
 }
 
-function Detail({ id, snap, select }: { id: string; snap: Snapshot; select: (id: string) => void }) {
+function Detail({ id, snap, select, approval, setApproval }: { id: string; snap: Snapshot; select: (id: string) => void; approval: { priority: string; selected_sensors: string[] }; setApproval: React.Dispatch<React.SetStateAction<{ priority: string; selected_sensors: string[] }>> }) {
   const [d, setD] = useState<IncidentDetail | null>(null);
   const tick = Math.floor(snap.clock.t / 5);
   useEffect(() => { api.incident(id).then(setD).catch(() => setD(null)); }, [id, tick, snap.catalog.version]);
+  const savedApproval = snap.approvals?.[id];
+  const sensorChoices = d?.where.sensors.length ? d.where.sensors : snap.sensors.map((s) => s.sensor).slice(0, 8);
+  useEffect(() => {
+    if (!d || d.id !== id) return;
+    setApproval(({ priority, selected_sensors }) => ({
+      priority: savedApproval?.priority ?? priority,
+      selected_sensors: savedApproval?.selected_sensors?.length ? savedApproval.selected_sensors : (selected_sensors.length ? selected_sensors : sensorChoices),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, snap.approvals, d?.where.sensors.join(",")]);
   if (!d || d.id !== id) return <Card><div className="empty">Loading…</div></Card>;
   const cat = d.catalog ?? ({} as IncidentDetail["catalog"]);
   const parent = d.parent ? snap.incidents.find((i) => i.id === d.parent) : null;
@@ -73,6 +84,8 @@ function Detail({ id, snap, select }: { id: string; snap: Snapshot; select: (id:
         </Card>
       )}
 
+      <ApprovalPanel id={id} approval={approval} setApproval={setApproval} snap={snap} sensorChoices={sensorChoices} />
+
       <FixPanel id={id} rec={snap.proposals[id]} agent={snap.agent} />
 
       <div className="grid g-2e">
@@ -106,6 +119,57 @@ const METRIC_LABEL: Record<string, string> = {
   failing_devices: "Failing devices", probe_replies_per_s: "Probe replies per second", retry_pct: "Retry %",
   missing_networks: "Missing networks", unknown_events: "Unmatched events",
 };
+
+function ApprovalPanel({ id, approval, setApproval, snap, sensorChoices }: { id: string; approval: { priority: string; selected_sensors: string[] }; setApproval: React.Dispatch<React.SetStateAction<{ priority: string; selected_sensors: string[] }>>; snap: Snapshot; sensorChoices: string[] }) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const toggleSensor = (sensor: string) => {
+    const exists = approval.selected_sensors.includes(sensor);
+    setApproval((prev) => ({
+      ...prev,
+      selected_sensors: exists ? prev.selected_sensors.filter((s) => s !== sensor) : [...prev.selected_sensors, sensor],
+    }));
+  };
+  const apply = async (approve: boolean) => {
+    setSubmitting(true); setError(null);
+    try {
+      await api.approveIncident(id, { approve, priority: approval.priority, selected_sensors: approval.selected_sensors });
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  const saved = snap.approvals?.[id];
+  return (
+    <section className="card">
+      <div className="card-head">
+        <div>
+          <h3>Approval & remediation scope</h3>
+          <p className="sub">Select which sensor data should be used to improve the issue, then approve the fix path.</p>
+        </div>
+      </div>
+      {error && <div className="callout bad">{error}</div>}
+      <div className="row" style={{ marginBottom: 8 }}>
+        {(["P1", "P2", "P3"]).map((level) => (
+          <button key={level} className={approval.priority === level ? "btn primary" : "btn"} onClick={() => setApproval((prev) => ({ ...prev, priority: level }))}>{level}</button>
+        ))}
+      </div>
+      <div className="chips" style={{ marginBottom: 10 }}>
+        {sensorChoices.map((sensor) => (
+          <button key={sensor} className={`chip ${approval.selected_sensors.includes(sensor) ? "selected" : ""}`} onClick={() => toggleSensor(sensor)} style={{ cursor: "pointer", background: approval.selected_sensors.includes(sensor) ? "var(--good-bg)" : "var(--surface-2)" }}>
+            {sensor}
+          </button>
+        ))}
+      </div>
+      <div className="row">
+        <button className="btn good" disabled={submitting} onClick={() => apply(true)}>{submitting ? "Saving…" : "Approve"}</button>
+        <button className="btn" disabled={submitting} onClick={() => apply(false)}>Hold</button>
+      </div>
+      {saved && <div className="callout info small" style={{ marginTop: 10 }}>Saved: {saved.priority} · {saved.selected_sensors.join(", ")}</div>}
+    </section>
+  );
+}
 
 function FixPanel({ id, rec, agent }: { id: string; rec?: ProposalRecord; agent: Snapshot["agent"] }) {
   const [busy, setBusy] = useState(false);

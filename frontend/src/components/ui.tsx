@@ -63,12 +63,14 @@ export function Card({ title, sub, right, children, className = "" }: { title?: 
   );
 }
 
-export type Palette = { s1: string; s2: string; s3: string; s4: string; ink2: string; muted: string; line: string; axis: string; surface: string };
+export type Palette = { s1: string; s2: string; s3: string; s4: string; s5: string; s6: string; s7: string; s8: string;
+  ink2: string; muted: string; line: string; axis: string; surface: string };
 
 function readPalette(): Palette {
   const cs = getComputedStyle(document.documentElement);
   const v = (n: string) => cs.getPropertyValue(n).trim();
-  return { s1: v("--s1"), s2: v("--s2"), s3: v("--s3"), s4: v("--s4"), ink2: v("--ink-2"), muted: v("--muted"), line: v("--line"), axis: v("--axis"), surface: v("--surface") };
+  return { s1: v("--s1"), s2: v("--s2"), s3: v("--s3"), s4: v("--s4"), s5: v("--s5"), s6: v("--s6"), s7: v("--s7"), s8: v("--s8"),
+    ink2: v("--ink-2"), muted: v("--muted"), line: v("--line"), axis: v("--axis"), surface: v("--surface") };
 }
 
 export function usePalette(themeKey: string): Palette {

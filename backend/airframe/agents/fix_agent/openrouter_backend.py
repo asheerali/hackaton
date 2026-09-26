@@ -11,7 +11,9 @@ from .prompts import SYSTEM
 from .schema import PROPOSAL_SCHEMA
 
 
-def propose(e: Engine, incident_id: str, lock) -> tuple[dict, dict]:
+def propose(e: Engine, incident_id: str, lock, fast: bool = False) -> tuple[dict, dict]:
+    # DeepSeek's configured model is already the fast "flash" variant, so `fast` is a no-op
+    # here; the parameter exists to keep the call signature identical across providers.
     with lock:
         first = json.dumps(incident_dict(e, e.inc.items[incident_id], full=True), default=str)[:30000]
     content = f"Incident to fix:\n{first}\n\nInvestigate with the tools, then return the proposal JSON."

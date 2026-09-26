@@ -38,19 +38,19 @@ def current_model() -> str | None:
 _BACKENDS = {"claude": claude_backend, "openrouter": openrouter_backend}
 
 
-def propose(e: Engine, incident_id: str, lock) -> dict:
+def propose(e: Engine, incident_id: str, lock, fast: bool = False, trigger: str = "manual") -> dict:
     with lock:
         if incident_id not in e.inc.items:
             raise KeyError(incident_id)
         cid = e.inc.items[incident_id].cid
     t0 = time.time()
     m = mode()
-    meta: dict = {"mode": m}
+    meta: dict = {"mode": m, "trigger": trigger, "fast": fast}
     note = None
     backend = _BACKENDS.get(m)
     if backend is not None:
         try:
-            proposal, extra = backend.propose(e, incident_id, lock)
+            proposal, extra = backend.propose(e, incident_id, lock, fast=fast)
             meta.update(extra)
         except Exception as exc:  # fall back, but say so
             note = f"{m} unavailable ({type(exc).__name__}: {str(exc)[:160]}); offline playbook used."

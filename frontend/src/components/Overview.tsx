@@ -1,42 +1,20 @@
 ﻿import { fmtT, type Snapshot } from "../api";
-import { LoginChart, ProbeChart } from "./Charts";
+import { LoginChart, ProbeChart, SensorCompareChart } from "./Charts";
 import { Card, Kpi, Sev, type Palette } from "./ui";
 
 export function Overview({ snap, pal, openIncident }: { snap: Snapshot; pal: Palette; openIncident: (id: string) => void }) {
   const k = snap.kpi;
   const open = snap.incidents.filter((i) => i.status === "open");
-  const root = open.find((i) => i.is_root) ?? open[0];
   const dur = snap.clock.duration;
   const success = k.attempts ? k.connected / k.attempts : null;
+  const sensorCompare = snap.sensors.map((sensor) => ({
+    sensor: sensor.sensor,
+    alive: sensor.alive,
+    frames: sensor.frames,
+    beacon_loss_pct: sensor.beacon_loss_pct ?? 0,
+  }));
   return (
     <div className="grid" style={{ gap: 14 }}>
-      {root ? (
-        <section className={`card ${root.severity === "critical" ? "hero" : ""}`}>
-          <div className="row"><Sev s={root.severity} /><span className="pill">{root.catalog_id}</span>
-            <span className="muted small">detected at {fmtT(root.first_seen_t)} · updated {fmtT(root.updated_t)}</span>
-            {k.time_to_root_s != null && root.is_root && <span className="pill">found {k.time_to_root_s.toFixed(0)} s after the first failing join</span>}
-          </div>
-          <h2>{root.title}</h2>
-          <p>
-            {root.is_root
-              ? <>Every login on <b>{root.network}</b> stops at the identity check (“who are you?”) and the device is thrown out. The same failure appears on {root.where.aps.length} access points and {root.where.sensors.length} sensors, so it is counted as <b>one problem</b>, not {root.devices_affected} separate ones.</>
-              : <>Most important open finding right now.</>}
-          </p>
-          <div className="facts tabnum">
-            <div><b>{root.devices_affected}</b><span>devices affected</span></div>
-            <div><b>{root.where.aps.length}</b><span>access points</span></div>
-            <div><b>{root.where.channels.length}</b><span>channels</span></div>
-            <div><b>{root.where.sensors.join(" ") || "–"}</b><span>seen by, counted once</span></div>
-            <div><b>{Math.round(root.confidence * 100)}%</b><span>confidence</span></div>
-          </div>
-          <div className="row" style={{ marginTop: 12 }}>
-            <button className="btn primary" onClick={() => openIncident(root.id)}>Open incident & propose fix →</button>
-          </div>
-        </section>
-      ) : (
-        <Card><div className="empty">{snap.clock.t < 30 ? "Listening… the first findings appear within about a minute of capture time." : "No open incidents."}</div></Card>
-      )}
-
       <div className="grid g-kpi">
         <Kpi label="Devices seen" value={k.devices} foot={`${snap.clock.frames.toLocaleString()} frames`} />
         <Kpi label="Failing now" value={k.failing} tone={k.failing ? "bad" : "good"} foot={`${k.fast_rejects} fast-rejects`} />
@@ -56,7 +34,44 @@ export function Overview({ snap, pal, openIncident }: { snap: Snapshot; pal: Pal
         </Card>
       </div>
 
+      <Card title="Nearby sensor comparison" sub="Cross-compare capture health and event intensity across the sensor cluster.">
+        <div className="sensor-grid">
+          {sensorCompare.map((entry) => (
+            <div key={entry.sensor} className="sensor">
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <b>{entry.sensor}</b>
+                <span className={`state ${entry.alive ? "good" : "critical"}`} style={{ color: entry.alive ? "var(--good)" : "var(--critical)" }}>
+                  {entry.alive ? "● listening" : "✕ silent"}
+                </span>
+              </div>
+              <div className="m" style={{ marginTop: 8 }}>
+                <span>{entry.frames.toLocaleString()} frames</span>
+                <span>{entry.beacon_loss_pct.toFixed(1)}% beacon loss</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 14 }}>
+          <SensorCompareChart perSensor={snap.series.per_sensor} sensors={snap.series.sensors} pal={pal} duration={dur} />
+        </div>
+      </Card>
+
       <div className="grid g-2">
+        <Card title="Critical alert log" sub="Every critical detection, newest first — a running notification log, not just what's currently open.">
+          <ul className="feed">
+            {snap.feed.filter((f) => f.severity === "critical").map((f, n) => {
+              const isNew = snap.clock.t - f.t < 8;
+              return (
+                <li key={n} className={isNew ? "pulse" : undefined}>
+                  <span className="muted tabnum">{fmtT(f.t)}</span>
+                  <span><Sev s="critical" /> {f.ref && f.ref.startsWith("INC") ? <a href="#" onClick={(e) => { e.preventDefault(); openIncident(f.ref!); }}>{f.text}</a> : f.text}
+                    {isNew && <span className="pill" style={{ marginLeft: 6 }}>new</span>}</span>
+                </li>
+              );
+            })}
+            {!snap.feed.some((f) => f.severity === "critical") && <li><span className="muted">No critical alerts yet</span></li>}
+          </ul>
+        </Card>
         <Card title="Open incidents" sub="One line per real problem. Children (per-device findings) are inside each incident.">
           <div className="inc-list">
             {open.slice(0, 8).map((i) => (
@@ -71,6 +86,9 @@ export function Overview({ snap, pal, openIncident }: { snap: Snapshot; pal: Pal
             {!open.length && <div className="empty">Nothing open.</div>}
           </div>
         </Card>
+      </div>
+
+      <div className="grid g-2">
         <Card title="Live events">
           <ul className="feed">
             {snap.feed.map((f, n) => (

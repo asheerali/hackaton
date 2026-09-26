@@ -5,7 +5,7 @@ import { Devices } from "./components/Devices";
 import { Incidents } from "./components/Incidents";
 import { Learning } from "./components/Learning";
 import { Overview } from "./components/Overview";
-import { Icon, usePalette } from "./components/ui";
+import { Icon, providerLabel, usePalette } from "./components/ui";
 
 type Tab = "overview" | "incidents" | "devices" | "air" | "learning";
 const SPEEDS = [1, 10, 30, 60, 0];
@@ -26,12 +26,16 @@ export default function App() {
   const [incident, setIncident] = useState<string | null>(null);
   const [theme, toggleTheme] = useTheme();
   const pal = usePalette(theme);
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const openIncident = (id: string) => { setIncident(id); setTab("incidents"); };
 
   const c = snap?.clock;
   const progress = c?.duration ? Math.min(100, (100 * c.t) / c.duration) : 0;
   const running = c?.state === "running";
   const openCount = snap?.incidents.filter((i) => i.status === "open").length ?? 0;
+  const criticalAlerts = [...(snap?.alerts?.filter((a) => a.severity === "critical" && !dismissed.has(a.incident_id)) ?? [])]
+    .sort((a, b) => b.created_t - a.created_t);
+  const dismiss = (id: string) => setDismissed((cur) => new Set(cur).add(id));
 
   return (
     <>
@@ -48,13 +52,13 @@ export default function App() {
               {SPEEDS.map((s) => <button key={s} className={c?.speed === s ? "on" : ""} onClick={() => api.replay("speed", s)}>{s === 0 ? "Max" : `${s}×`}</button>)}
             </div>
             <button className="btn" onClick={() => api.replay("start", c?.speed ?? 10)}>{Icon.restart} Restart</button>
-            <span className="pill">{snap?.agent.mode === "claude" ? "AI: Claude" : "AI: offline"}</span>
+            <span className="pill">{snap ? `AI: ${providerLabel(snap.agent.mode, snap.agent.model)}` : "AI: offline"}</span>
             <button className="btn" onClick={toggleTheme} aria-label="Toggle theme">{theme === "dark" ? Icon.sun : Icon.moon}</button>
           </div>
         </div>
         <div className="progress"><div style={{ width: `${progress}%` }} /></div>
         <nav className="tabs">
-          {([["overview", "Overview"], ["incidents", "Incidents"], ["devices", "Devices"], ["air", "Air & sensors"], ["learning", "Learning (Part 3)"]] as [Tab, string][]).map(([k, label]) => (
+          {([["overview", "Overview"], ["incidents", "Incidents"], ["devices", "Devices"], ["air", "Air & sensors"], ["learning", "Learning"]] as [Tab, string][]).map(([k, label]) => (
             <button key={k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{label}
               {k === "incidents" && openCount > 0 && <span className="count">{openCount}</span>}
               {k === "learning" && (snap?.unknown.count ?? 0) > 0 && <span className="count">{snap?.unknown.count}</span>}
@@ -62,6 +66,27 @@ export default function App() {
           ))}
         </nav>
       </header>
+      {snap && criticalAlerts.length > 0 && (
+        <div className="toast-stack" role="alert" aria-live="assertive">
+          {criticalAlerts.map((alert) => {
+            const isNew = snap.clock.t - alert.created_t < 8;
+            return (
+              <div key={alert.incident_id} className={`toast ${isNew ? "pulse" : ""}`}>
+                <button className="toast-body" onClick={() => openIncident(alert.incident_id)}>
+                  <div className="row" style={{ justifyContent: "space-between" }}>
+                    <span className="sev critical">Critical{isNew ? " · new" : ""}</span>
+                    <span className="pill">{alert.priority}</span>
+                  </div>
+                  <strong>{alert.title}</strong>
+                  <div className="muted small">{alert.catalog_id} · Sensors: {alert.sensors.join(", ") || "n/a"}</div>
+                  <div className="muted tabnum small">detected {fmtT(alert.created_t)}</div>
+                </button>
+                <button className="toast-close" aria-label="Dismiss" onClick={(e) => { e.stopPropagation(); dismiss(alert.incident_id); }}>✕</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
       <main>
         {!snap ? <div className="empty">Connecting to the Airframe engine… (start it with <code>python -m airframe serve</code>)</div> : (
           <>

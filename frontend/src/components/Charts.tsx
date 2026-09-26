@@ -83,6 +83,69 @@ export function ProbeChart({ series, pal, duration }: { series: SeriesPoint[]; p
   );
 }
 
+const SENSOR_METRICS = [
+  { key: "frames_per_s", name: "Frames", unit: "/s" },
+  { key: "probe_per_s", name: "Probe replies", unit: "/s" },
+  { key: "retry_pct", name: "Retry rate", unit: "%" },
+  { key: "beacon_air_pct", name: "Beacon airtime", unit: "%" },
+  { key: "kicks", name: "802.1X kicks", unit: "" },
+  { key: "connected", name: "Connections", unit: "" },
+] as const;
+const SENSOR_SLOTS = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"] as const;
+
+export function SensorCompareChart({ perSensor, sensors, pal, duration }:
+  { perSensor: Record<string, Array<Record<string, number>>>; sensors: string[]; pal: Palette; duration: number | null }) {
+  const [metric, setMetric] = useState<(typeof SENSOR_METRICS)[number]["key"]>("frames_per_s");
+  const [selected, setSelected] = useState<string[]>(sensors);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const active = selected.filter((s) => sensors.includes(s));
+  const m = SENSOR_METRICS.find((x) => x.key === metric)!;
+  const data = perSensor[metric] ?? [];
+
+  const toggle = (s: string) => setSelected((cur) => (cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]));
+  const toggleLegend = (s: string) => setHidden((cur) => {
+    const next = new Set(cur);
+    if (next.has(s)) next.delete(s); else next.add(s);
+    return next;
+  });
+
+  return (
+    <div>
+      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+        <div className="row" style={{ gap: 4, flexWrap: "wrap" }}>
+          <button className="btn small" onClick={() => setSelected(sensors)}>Select all</button>
+          <button className="btn small" onClick={() => setSelected([])}>Deselect all</button>
+          {sensors.map((s) => (
+            <button key={s} className={`chip ${selected.includes(s) ? "selected" : ""}`} onClick={() => toggle(s)}>{s}</button>
+          ))}
+        </div>
+        <select className="btn small" value={metric} onChange={(e) => setMetric(e.target.value as typeof metric)}>
+          {SENSOR_METRICS.map((x) => <option key={x.key} value={x.key}>{x.name}</option>)}
+        </select>
+      </div>
+      <div className="legend" style={{ marginTop: 6 }}>
+        {active.map((s, i) => (
+          <span key={s} style={{ cursor: "pointer", opacity: hidden.has(s) ? 0.4 : 1 }} onClick={() => toggleLegend(s)}>
+            <i style={{ background: pal[SENSOR_SLOTS[i % SENSOR_SLOTS.length]] }} />{s}
+          </span>
+        ))}
+      </div>
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={data} margin={{ top: 6, right: 12, left: -18, bottom: 0 }}>
+          <CartesianGrid stroke={pal.line} vertical={false} />
+          <XAxis dataKey="t" type="number" domain={[0, duration ?? "dataMax"]} tickFormatter={fmtT} stroke={pal.axis} tick={{ fill: pal.muted, fontSize: 11 }} tickLine={false} />
+          <YAxis stroke={pal.axis} tick={{ fill: pal.muted, fontSize: 11 }} tickLine={false} axisLine={false} unit={m.unit} />
+          <Tooltip content={<Tip labelFmt={(l) => fmtT(l as number)} unit={m.unit} />} cursor={{ stroke: pal.axis }} />
+          {active.map((s, i) => !hidden.has(s) && (
+            <Line key={s} dataKey={s} name={s} stroke={pal[SENSOR_SLOTS[i % SENSOR_SLOTS.length]]} strokeWidth={2} dot={false}
+              activeDot={{ r: 4, stroke: pal.surface, strokeWidth: 2 }} isAnimationActive={false} />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 export function ChannelBars({ data, unit, pal, name }: { data: Record<string, number>; unit: string; pal: Palette; name: string }) {
   const rows = Object.entries(data).map(([ch, v]) => ({ ch: `ch ${ch}`, v })).sort((a, b) => Number(a.ch.slice(3)) - Number(b.ch.slice(3)));
   return (

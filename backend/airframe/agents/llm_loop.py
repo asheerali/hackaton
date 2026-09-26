@@ -10,11 +10,13 @@ from .tools import run_tool, tool_specs
 
 
 def run_json_agent(e: Engine, lock, *, system: str, schema: dict, first_content: str,
-                    tool_names: list[str] | None = None) -> tuple[dict, dict]:
+                    tool_names: list[str] | None = None, model: str | None = None) -> tuple[dict, dict]:
     """Drive a Claude tool-use loop until it returns JSON matching `schema`.
 
     Returns (parsed_json, meta) where meta has turns/tool_calls/model.
     Raises RuntimeError on refusal, max_tokens, or turn-limit exhaustion.
+    `model` overrides config.AGENT_MODEL - used to route auto-triggered, time-sensitive
+    calls (e.g. a critical incident's first-pass proposal) to a smaller/faster model.
     """
     import anthropic
 
@@ -23,7 +25,7 @@ def run_json_agent(e: Engine, lock, *, system: str, schema: dict, first_content:
     trace = []
     for turn in range(config.AGENT_MAX_TURNS):
         resp = client.beta.messages.create(
-            model=config.AGENT_MODEL, max_tokens=16000, system=system, messages=messages,
+            model=model or config.AGENT_MODEL, max_tokens=16000, system=system, messages=messages,
             tools=tool_specs(tool_names), thinking={"type": "adaptive"},
             output_config={"format": {"type": "json_schema", "schema": schema}},
             betas=["server-side-fallback-2026-07-01"], fallbacks="default",

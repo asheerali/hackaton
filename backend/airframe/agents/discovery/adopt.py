@@ -25,10 +25,11 @@ def adopt(e: Engine, dr: dict, reviewer_note: str, lock) -> dict:
                  "dataset": {"seen": True, "evidence": f"adopted from {dr['cluster']['cluster_id']} ({dr['cluster']['count']} events)"},
                  "source": "discovery-agent", "draft_id": dr["draft_id"]}
         version = e.cat.add_extension(entry, f"{dr['draft_id']} approved: {reviewer_note or 'no note'}")
-        n = 0
+        reclassified_ids = []
         for u in e.unknown:
             det = u["detail"]
             if not u.get("reclassified") and det.get("code") is not None and e.cat.for_code(det.get("field", ""), det["code"]) == new_id:
                 u["reclassified"] = new_id
-                n += 1
-    return {"entry_id": new_id, "catalog_version": version, "reclassified_events": n}
+                reclassified_ids.append(u["id"])
+    return {"entry_id": new_id, "catalog_version": version, "reclassified_events": len(reclassified_ids),
+            "reclassified_ids": reclassified_ids}

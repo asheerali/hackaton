@@ -82,6 +82,7 @@ def series(e: Engine) -> dict:
     n = int(e.t // config.BUCKET_S) + 1
     site = []
     per_ch = {}
+    per_sensor = {}
     for i in range(n):
         agg = Counter()
         for s, bk in e.buckets.items():
@@ -102,6 +103,13 @@ def series(e: Engine) -> dict:
                 "retry_pct": round(100 * b.probe_resp_retry / b.probe_resp, 1) if b.probe_resp else 0,
                 "beacon_air_pct": round(100 * b.beacon_air_us / (config.BUCKET_S * 1e6), 1),
             }
+            per_sensor.setdefault(s, {})[i] = {
+                "frames_per_s": round(b.frames / config.BUCKET_S, 1),
+                "probe_per_s": round(b.probe_resp / config.BUCKET_S, 1),
+                "retry_pct": round(100 * b.probe_resp_retry / b.probe_resp, 1) if b.probe_resp else 0,
+                "beacon_air_pct": round(100 * b.beacon_air_us / (config.BUCKET_S * 1e6), 1),
+                "kicks": b.kicks, "connected": b.connected,
+            }
         site.append({"t": i * config.BUCKET_S, **agg,
                      "probe_per_s": round(agg["probe_resp"] / config.BUCKET_S, 1),
                      "retry_pct": round(100 * agg["probe_retry"] / agg["probe_resp"], 1) if agg["probe_resp"] else 0})
@@ -111,7 +119,14 @@ def series(e: Engine) -> dict:
     air = {c: round(st.mean(v["beacon_air_pct"] for v in per_ch[c].values()), 1) for c in channels}
     retry = {c: round(st.mean(v["retry_pct"] for v in per_ch[c].values() if v["retry_pct"]), 1)
              if any(v["retry_pct"] for v in per_ch[c].values()) else 0 for c in channels}
-    return {"site": site, "channels": channels, "probe_by_channel": chan_series, "beacon_air_pct": air, "retry_pct": retry}
+    sensors = sorted(per_sensor)
+    per_sensor_series = {
+        metric: [{"t": i * config.BUCKET_S, **{f"S{s}": per_sensor[s].get(i, {}).get(metric, 0) for s in sensors}}
+                 for i in range(n)]
+        for metric in ("frames_per_s", "probe_per_s", "retry_pct", "beacon_air_pct", "kicks", "connected")
+    }
+    return {"site": site, "channels": channels, "probe_by_channel": chan_series, "beacon_air_pct": air, "retry_pct": retry,
+            "sensors": [f"S{s}" for s in sensors], "per_sensor": per_sensor_series}
 
 
 def sensors_view(e: Engine) -> list[dict]:

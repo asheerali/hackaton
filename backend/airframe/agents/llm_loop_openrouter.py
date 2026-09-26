@@ -59,13 +59,16 @@ def _extract_json(text: str) -> dict:
 
 
 def run_json_agent(e: Engine, lock, *, system: str, schema: dict, first_content: str,
-                    tool_names: list[str] | None = None, client: httpx.Client | None = None) -> tuple[dict, dict]:
+                    tool_names: list[str] | None = None, model: str | None = None,
+                    client: httpx.Client | None = None) -> tuple[dict, dict]:
     """Drive an OpenRouter (DeepSeek) tool-call loop until it returns JSON matching `schema`.
 
     Returns (parsed_json, meta) where meta has turns/tool_calls/model.
     Raises RuntimeError on an API error, a finish_reason of "length", or turn-limit exhaustion.
-    `client` is injectable for tests (an httpx.Client with a mock transport); a real
-    OpenRouter POST is made against config.OPENROUTER_BASE_URL otherwise.
+    `model` overrides config.OPENROUTER_MODEL (already the "flash"/fast DeepSeek variant by
+    default, but kept overridable for consistency with the Claude loop). `client` is injectable
+    for tests (an httpx.Client with a mock transport); a real OpenRouter POST is made against
+    config.OPENROUTER_BASE_URL otherwise.
     """
     own_client = client is None
     http = client or httpx.Client(timeout=config.OPENROUTER_TIMEOUT_S)
@@ -77,7 +80,7 @@ def run_json_agent(e: Engine, lock, *, system: str, schema: dict, first_content:
     trace: list[dict] = []
     try:
         for turn in range(config.AGENT_MAX_TURNS):
-            body = {"model": config.OPENROUTER_MODEL, "messages": messages, "max_tokens": 8000,
+            body = {"model": model or config.OPENROUTER_MODEL, "messages": messages, "max_tokens": 8000,
                     "reasoning": {"enabled": True}}
             if tools:
                 body["tools"] = tools

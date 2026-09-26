@@ -21,16 +21,16 @@ export function Learning({ snap }: { snap: Snapshot }) {
     <div className="grid" style={{ gap: 14 }}>
       <div className="grid g-kpi">
         <Kpi label="Catalog version" value={snap.catalog.version} foot={`${snap.catalog.entries} entries · ${snap.catalog.categories} categories`} />
-        <Kpi label="Learned entries" value={snap.catalog.extensions} foot="approved by a reviewer" />
+        <Kpi label="Learned entries" value={snap.catalog.extensions} foot="auto-adopted, no human click" />
         <Kpi label="Unmatched events" value={snap.unknown.count} tone={snap.unknown.count ? "warn" : "good"} foot="saved as OTHER, never dropped" />
         <Kpi label="Clusters to review" value={open.length} />
         <Kpi label="Drafts" value={snap.drafts.length} foot={`${snap.drafts.filter((d) => d.status === "adopted").length} adopted`} />
         <Kpi label="Discovery mode" value={snap.agent.mode === "offline" ? "Offline" : providerLabel(snap.agent.mode)} foot={snap.agent.mode === "offline" ? "heuristic drafts" : snap.agent.model} />
       </div>
 
-      <Card title="How Part 3 works" sub="Every frame, sequence and metric is matched against the error catalog. Known → incident (Part 1) → fix (Part 2). Unknown → OTHER → clustered → drafted → validated and back-tested → a person approves → the catalog grows and detection updates immediately.">
+      <Card title="How Part 3 works" sub="Every frame, sequence and metric is matched against the error catalog. Known → incident (Part 1) → fix (Part 2). Unknown → OTHER → clustered → drafted → validated and back-tested → automatically adopted, no human click → the catalog grows and detection updates immediately, and the newly-classified events re-run through the incident workflow.">
         <div className="callout info small">
-          In these 30 minutes of captures every code is already in the catalog, so there are no unmatched events of their own. To demonstrate the loop, inject clearly-marked <b>synthetic</b> test frames: access-point disconnects with reason code 250, which the IEEE 802.11 standard does not define (a vendor-specific code).
+          This runs on its own in the background as soon as a cluster of unmatched events is large enough — nothing here needs a click. In these 30 minutes of captures every code is already in the catalog, so there are no unmatched events of their own. To demonstrate the loop, inject clearly-marked <b>synthetic</b> test frames: access-point disconnects with reason code 250, which the IEEE 802.11 standard does not define (a vendor-specific code), and watch a draft appear below and adopt itself.
           <div className="row" style={{ marginTop: 8 }}>
             <button className="btn" disabled={busy === "inject"} onClick={() => run("inject", () => api.inject(25, 250))}>Inject 25 synthetic events (reason 250)</button>
           </div>
@@ -62,7 +62,8 @@ function DraftCard({ d }: { d: Draft }) {
   const decide = async (decision: string) => { try { await api.draftDecision(d.draft_id, decision); } catch (x) { setErr(String(x)); } };
   const tone = d.status === "adopted" ? "good" : d.status === "ready_for_review" ? "info" : d.status === "rejected" ? "warn" : "bad";
   return (
-    <Card title={<>Draft {d.draft_id} <span className="pill" style={{ marginLeft: 6 }}>{providerPill(d.meta.mode, undefined, "offline heuristic")}</span></>}
+    <Card title={<>Draft {d.draft_id} <span className="pill" style={{ marginLeft: 6 }}>{providerPill(d.meta.mode, undefined, "offline heuristic")}</span>
+      <span className="pill" style={{ marginLeft: 6 }}>{d.trigger === "auto" ? "auto · no human click" : "manual"}</span></>}
       sub={`From ${d.cluster.cluster_id}: ${d.cluster.count} events`}
       right={d.status === "ready_for_review" ? <div className="row"><button className="btn good" onClick={() => decide("approve")}>✓ Approve & add to catalog</button><button className="btn danger" onClick={() => decide("reject")}>✕ Reject (mark benign)</button></div> : <span className={`sev ${tone === "good" ? "good" : "info"}`}>{d.status.replaceAll("_", " ")}</span>}>
       {d.meta.note && <div className="callout warn small">{d.meta.note}</div>}
