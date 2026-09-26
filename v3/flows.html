@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Airframe System Flows</title>
+<style>
+  :root{
+    --bg:#f5f6fa; --card:#fff; --ink:#14161c; --ink2:#4a5060; --ink3:#8a90a0; --line:#e2e5ee;
+    --p0:#16181d; --p1:#2458c6; --p1bg:#eaf0fd; --p2:#b0480c; --p2bg:#fdf0e7; --p3:#6b3fb5; --p3bg:#f2ecfc;
+    --rt:#0d7f73; --rtbg:#e3f5f2; --ok:#1f8a4c; --red:#c8102e; --hero1:#0f1220; --hero2:#262b52;
+  }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+    --bg:#0e1016; --card:#171a23; --ink:#eef0f6; --ink2:#b9bfcc; --ink3:#7e8596; --line:#2a2f3c;
+    --p0:#eef0f6; --p1:#7aa2ff; --p1bg:#1a2340; --p2:#ff9d5c; --p2bg:#35200f; --p3:#b894ff; --p3bg:#261c3d;
+    --rt:#4fd1c0; --rtbg:#10302c; --ok:#5fd394; --red:#ff6b7f; }}
+  :root[data-theme="dark"]{
+    --bg:#0e1016; --card:#171a23; --ink:#eef0f6; --ink2:#b9bfcc; --ink3:#7e8596; --line:#2a2f3c;
+    --p0:#eef0f6; --p1:#7aa2ff; --p1bg:#1a2340; --p2:#ff9d5c; --p2bg:#35200f; --p3:#b894ff; --p3bg:#261c3d;
+    --rt:#4fd1c0; --rtbg:#10302c; --ok:#5fd394; --red:#ff6b7f; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 16px}
+  header{background:linear-gradient(135deg,var(--hero1),var(--hero2));color:#fff;padding:34px 0 26px}
+  .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#ff8a9a;font-weight:700}
+  h1{font-size:31px;line-height:1.15;margin:8px 0;letter-spacing:-.4px}
+  header p{margin:0;color:#c6cbe0;max-width:800px}
+  nav{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;gap:6px;overflow-x:auto;padding-top:8px;padding-bottom:8px}
+  nav a{white-space:nowrap;text-decoration:none;color:var(--ink2);font-size:13.5px;font-weight:600;padding:5px 12px;border-radius:999px;border:1px solid var(--line)}
+  nav a:hover{color:var(--ink);border-color:var(--ink3)}
+  section{padding:30px 0 6px}
+  h2{font-size:22px;margin:0 0 4px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .tag{font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;border-radius:999px;padding:3px 10px}
+  .lead{color:var(--ink2);margin:0 0 16px;max-width:860px}
+  h3{font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin:22px 0 10px}
+
+  .hl{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px}
+  .node{flex:1 1 150px;min-width:140px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:12px 12px 10px;display:flex;flex-direction:column;gap:4px}
+  .rt .node{flex-basis:118px;min-width:112px}
+  .node b{font-size:14.5px}
+  .node span{font-size:12.8px;color:var(--ink2)}
+  .node.accent{border-width:2px}
+  .node.human{border-style:dashed}
+  .arr{flex:0 0 26px;display:grid;place-items:center;color:var(--ink3);font-size:18px}
+  .hl .loop{flex-basis:100%;margin-top:10px;font-size:12.5px;color:var(--ink2);border-top:1px dashed var(--line);padding-top:8px}
+
+  .deep{display:grid;gap:12px}
+  .lane{display:grid;grid-template-columns:150px 1fr;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px}
+  .lane > .lbl{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;border-radius:10px;padding:10px;display:flex;align-items:center}
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+  .step{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;position:relative}
+  .step .n{position:absolute;top:10px;right:10px;font-size:11px;font-weight:800;color:var(--ink3)}
+  .step b{display:block;font-size:14px;margin-bottom:2px;padding-right:20px}
+  .step p{margin:0;font-size:12.8px;color:var(--ink2)}
+  .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+  .chip{font:11.5px Consolas,ui-monospace,monospace;border:1px solid var(--line);border-radius:6px;padding:0 6px;color:var(--ink2);background:var(--card)}
+  .dec{border-style:dashed}
+  .dec b::before{content:"◇ ";color:var(--ink3)}
+  .downarrow{text-align:center;color:var(--ink3);font-size:18px;line-height:1;margin:-4px 0}
+
+  .p1 .tag,.p1 .lbl{background:var(--p1bg);color:var(--p1)} .p1 .accent{border-color:var(--p1)}
+  .p2 .tag,.p2 .lbl{background:var(--p2bg);color:var(--p2)} .p2 .accent{border-color:var(--p2)}
+  .p3 .tag,.p3 .lbl{background:var(--p3bg);color:var(--p3)} .p3 .accent{border-color:var(--p3)}
+  .rt .tag,.rt .lbl{background:var(--rtbg);color:var(--rt)} .rt .accent{border-color:var(--rt)}
+  .ov .tag{background:var(--bg);color:var(--ink)}
+
+  .big{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:14px;align-items:stretch}
+  .col{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px}
+  .col h4{margin:0;font-size:15px;display:flex;align-items:center;gap:8px}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .col .item{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;color:var(--ink2)}
+  .col .item b{color:var(--ink)}
+  .metric{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+  .m{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .m b{display:block;font-size:20px;color:var(--rt)}
+  .m span{font-size:12.5px;color:var(--ink2)}
+  footer{color:var(--ink3);font-size:12px;padding:28px 0 40px}
+  @media (max-width:860px){
+    .big{grid-template-columns:1fr} .lane{grid-template-columns:1fr} .metric{grid-template-columns:1fr 1fr}
+    .arr{flex-basis:100%;height:22px;transform:rotate(90deg)} .node{flex-basis:100%}
+    h1{font-size:25px}
+  }
+  @media print{ nav{display:none} header{-webkit-print-color-adjust:exact;print-color-adjust:exact} section{break-inside:avoid-page} }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="kicker">Airframe · system flows</div>
+    <h1>From live air to "what, where, how to fix" and learning what's new</h1>
+    <p>Part 1 finds what is wrong and where, in real time. Part 2 is an AI agent that proposes the fix. Part 3 keeps a catalog of every known error and uses a second AI agent to turn unknown events into new catalog entries. Each part has a high-level and a deep-level flow.</p>
+  </div>
+</header>
+<nav><div class="wrap">
+  <a href="#overview">Overview</a><a href="#realtime">Real time</a><a href="#p1">Part 1</a><a href="#p2">Part 2</a><a href="#p3">Part 3</a>
+</div></nav>
+
+<main class="wrap">
+
+<!-- OVERVIEW -->
+<section id="overview" class="ov">
+  <h2><span class="tag">Overview</span> The whole system</h2>
+  <p class="lead">Three parts share one error catalog. Known problems flow left to right to a fix; unknown ones flow down into the learning loop and come back as new catalog entries.</p>
+  <div class="big">
+    <div class="col p1">
+      <h4><span class="dot" style="background:var(--p1)"></span>Part 1 · What &amp; where</h4>
+      <div class="item"><b>Input:</b> live frames from every sensor</div>
+      <div class="item"><b>Does:</b> decode, mask, rebuild device stories, match the catalog, count each problem once</div>
+      <div class="item"><b>Output:</b> incidents with location, severity, confidence; live dashboard</div>
+    </div>
+    <div class="col p2">
+      <h4><span class="dot" style="background:var(--p2)"></span>Part 2 · How to fix (AI agent)</h4>
+      <div class="item"><b>Input:</b> one incident + its catalog entry + evidence + site context</div>
+      <div class="item"><b>Does:</b> investigates with read-only tools, ranks causes, picks the confirming check</div>
+      <div class="item"><b>Output:</b> fix proposal: cause, confirm step, fix, owner, risk, rollback, success test</div>
+      <div class="item"><b>Human:</b> approves → ticket; Part 1 checks the success test live</div>
+    </div>
+    <div class="col p3">
+      <h4><span class="dot" style="background:var(--p3)"></span>Part 3 · Learn new problems (AI agent)</h4>
+      <div class="item"><b>Input:</b> events no catalog entry matched (OTHER)</div>
+      <div class="item"><b>Does:</b> clusters, investigates, drafts a new entry + rule + fix, backtests</div>
+      <div class="item"><b>Output:</b> catalog v+1 after human review; detectors hot-reload</div>
+    </div>
+  </div>
+</section>
+
+<!-- REAL TIME -->
+<section id="realtime" class="rt">
+  <h2><span class="tag">Real time</span> Yes: measured on this laptop</h2>
+  <p class="lead">We replayed the real recordings into tshark through a live pipe at 1×, 10× and 30× speed and timed every frame from "arrived" to "decoded in Python".</p>
+  <div class="hl">
+    <div class="node accent"><b>Sensor stream</b><span>live pipe, dumpcap, or replay of recorded pcaps</span></div><div class="arr">→</div>
+    <div class="node"><b>tshark -r - -l</b><span>one per sensor; header fields only</span></div><div class="arr">→</div>
+    <div class="node"><b>Normalise + mask</b><span>HMAC MACs, SSID labels</span></div><div class="arr">→</div>
+    <div class="node"><b>Event queue</b><span>asyncio now; Kafka/NATS at scale</span></div><div class="arr">→</div>
+    <div class="node"><b>State machines + counters</b><span>event-time timers, watermark, 5 s grace</span></div><div class="arr">→</div>
+    <div class="node"><b>Incident store</b><span>SQLite / DuckDB, open→resolved</span></div><div class="arr">→</div>
+    <div class="node accent"><b>Live dashboard</b><span>Server-Sent Events push every 1 s</span></div>
+  </div>
+  <div class="metric">
+    <div class="m"><b>571 /s</b><span>all 8 sensors at live pace</span></div>
+    <div class="m"><b>2.8 ms</b><span>median delay, pipe → decoded row (p99 10.5 ms)</span></div>
+    <div class="m"><b>≈15×</b><span>headroom: 9,552 frames/s max on one laptop</span></div>
+    <div class="m"><b>36 s</b><span>first failing join → site-wide incident (protocol timers, not compute)</span></div>
+  </div>
+</section>
+
+<!-- PART 1 -->
+<section id="p1" class="p1">
+  <h2><span class="tag">Part 1</span> Find WHAT is wrong and WHERE</h2>
+  <p class="lead">Runs continuously on the stream. Every detector is a catalog entry, so "what" always has a name, a plain-language meaning and a standard fix.</p>
+  <h3>High level</h3>
+  <div class="hl">
+    <div class="node"><b>Frames</b><span>all sensors</span></div><div class="arr">→</div>
+    <div class="node"><b>What can we see?</b><span>decode, mask, sensor coverage</span></div><div class="arr">→</div>
+    <div class="node accent"><b>What is wrong?</b><span>device stories, detectors, catalog match</span></div><div class="arr">→</div>
+    <div class="node accent"><b>Count once</b><span>1 device + 1 problem + 1 window = 1 incident; many APs = 1 root</span></div><div class="arr">→</div>
+    <div class="node"><b>Where &amp; how bad?</b><span>AP, channel, sensors, blast radius, severity, confidence</span></div><div class="arr">→</div>
+    <div class="node"><b>Incidents + dashboard</b><span>and hand-off to Part 2</span></div>
+  </div>
+  <h3>Deep level</h3>
+  <div class="deep">
+    <div class="lane"><div class="lbl">1 · Decode</div><div class="steps">
+      <div class="step"><span class="n">1.1</span><b>Frame row</b><p>sensor, time, rate, channel, signal, type, flags, addresses, sequence, codes, EAP, EAPOL message no.</p></div>
+      <div class="step"><span class="n">1.2</span><b>Mask first</b><p>HMAC-SHA256 of MACs with a site secret; SSIDs become NET-C/NET-T; EAP identities dropped.</p></div>
+      <div class="step"><span class="n">1.3</span><b>Role + direction</b><p>Beacon sender = AP; from-DS/to-DS decide who transmitted; ACKs have no sender.</p></div>
+    </div></div>
+    <div class="downarrow">↓</div>
+    <div class="lane"><div class="lbl">2 · Track</div><div class="steps">
+      <div class="step"><span class="n">2.1</span><b>Beacon tracker</b><p>Per BSSID: interval, loss, rate, security type, networks per AP.</p><div class="chips"><span class="chip">DISC-01</span><span class="chip">DISC-05</span><span class="chip">RF-03</span></div></div>
+      <div class="step"><span class="n">2.2</span><b>Sliding counters</b><p>1 s / 60 s per AP, channel and client: probes, retries, airtime.</p><div class="chips"><span class="chip">DISC-03</span><span class="chip">RF-01</span></div></div>
+      <div class="step"><span class="n">2.3</span><b>Episode state machine</b><p>Per device + AP: auth → assoc → EAP → M1..M4 → connected → left, with event-time timers.</p><div class="chips"><span class="chip">EAP-01</span><span class="chip">SESS-01/02</span></div></div>
+    </div></div>
+    <div class="downarrow">↓</div>
+    <div class="lane"><div class="lbl">3 · Judge</div><div class="steps">
+      <div class="step"><span class="n">3.1</span><b>Proof rules</b><p>AP side first: M3 proves a valid M2; status 0 proves the request; Block-Ack setup proves association.</p></div>
+      <div class="step dec"><span class="n">3.2</span><b>Could a sensor hear it?</b><p>No → "not observed", info only (KEY-06). Yes → real "missing" evidence.</p></div>
+      <div class="step dec"><span class="n">3.3</span><b>Catalog match?</b><p>Yes → detection with entry id. No → OTHER-CODE / SEQ / STAT to Part 3.</p></div>
+    </div></div>
+    <div class="downarrow">↓</div>
+    <div class="lane"><div class="lbl">4 · Count once</div><div class="steps">
+      <div class="step"><span class="n">4.1</span><b>Merge</b><p>Same device + entry within 5 s across sensors = one incident with "seen by".</p></div>
+      <div class="step"><span class="n">4.2</span><b>Root grouping</b><p>Same entry on ≥3 APs or ≥2 channels in 2 min → one root, devices as children.</p></div>
+      <div class="step"><span class="n">4.3</span><b>Causal links + control</b><p>Loops, fast rejects, probe storm attach to the root. Healthy SSID on same radios = control.</p></div>
+    </div></div>
+    <div class="downarrow">↓</div>
+    <div class="lane"><div class="lbl">5 · Locate + publish</div><div class="steps">
+      <div class="step"><span class="n">5.1</span><b>Score</b><p>Severity (devices × duration × network); confidence lowered by blind spots and data-quality flags.</p></div>
+      <div class="step"><span class="n">5.2</span><b>Where</b><p>APs, channels, sensors, time window, blast radius (device / AP / channel / site).</p></div>
+      <div class="step"><span class="n">5.3</span><b>Lifecycle + push</b><p>open → updating → resolved (quiet 2 cycles) → closed; pushed to dashboard and Part 2.</p></div>
+    </div></div>
+  </div>
+</section>
+
+<!-- PART 2 -->
+<section id="p2" class="p2">
+  <h2><span class="tag">Part 2</span> AI agent proposes HOW TO FIX</h2>
+  <p class="lead">A Claude-based agent with read-only tools. It never touches access points, controllers or RADIUS; people apply fixes. Part 1 then checks, live, whether the fix worked.</p>
+  <h3>High level</h3>
+  <div class="hl">
+    <div class="node"><b>Incident</b><span>what, where, evidence</span></div><div class="arr">→</div>
+    <div class="node"><b>Context pack</b><span>catalog entry, history, site info</span></div><div class="arr">→</div>
+    <div class="node accent"><b>Investigate</b><span>read-only tools, rank causes</span></div><div class="arr">→</div>
+    <div class="node accent"><b>Fix proposal</b><span>cause, check, fix, owner, risk, rollback, success test</span></div><div class="arr">→</div>
+    <div class="node human"><b>Human approves</b><span>edit or reject sends it back</span></div><div class="arr">→</div>
+    <div class="node"><b>Ticket → verify</b><span>Part 1 watches the success test</span></div>
+    <div class="loop">↺ Not resolved after the window → back to the agent with the new evidence. Resolved → outcome stored in the knowledge base for next time.</div>
+  </div>
+  <h3>Deep level</h3>
+  <div class="deep">
+    <div class="lane"><div class="lbl">1 · Trigger + context</div><div class="steps">
+      <div class="step"><span class="n">1.1</span><b>Trigger</b><p>New or escalated incident of severity high or above, or an engineer clicks "Explain &amp; fix".</p></div>
+      <div class="step"><span class="n">1.2</span><b>Context pack (masked)</b><p>Incident JSON, evidence refs, catalog causes/checks/fixes, control comparison, timers, similar past incidents, site inventory, change calendar.</p></div>
+    </div></div>
+    <div class="downarrow">↓</div>
+    <div class="lane"><div class="lbl">2 · Agent loop</div><div class="steps">
+      <div class="step"><span class="n">2.1</span><b>Restate facts</b><p>Only what evidence shows.</p></div>
+      <div class="step"><span class="n">2.2</span><b>Hypotheses</b><p>From catalog causes and history, ranked.</p></div>
+      <div class="step"><span class="n">2.3</span><b>Test with tools</b><p>Evidence for and against each hypothesis.</p><div class="chips"><span class="chip">get_timeline</span><span class="chip">query_frames</span><span class="chip">compare_control</span><span class="chip">catalog_lookup</span></div></div>
+      <div class="step"><span class="n">2.4</span><b>Deciding check</b><p>The one outside check that separates the top two causes, e.g. "are requests reaching RADIUS?"</p></div>
+      <div class="step"><span class="n">2.5</span><b>Fix plan</b><p>Steps, owner team, risk, rollback.</p></div>
+      <div class="step"><span class="n">2.6</span><b>Success test</b><p>Something Part 1 can measure, e.g. reason-23 count = 0 and EAP success &gt; 95% for 10 min.</p></div>
+    </div></div>
+    <div class="downarrow">↓</div>
+    <div class="lane"><div class="lbl">3 · Guardrails</div><div class="steps">
+      <div class="step"><span class="n">3.1</span><b>Read-only</b><p>No write tools exist; no transmission, no config change.</p></div>
+      <div class="step"><span class="n">3.2</span><b>Cite + validate</b><p>Every claim cites evidence ids; every code checked against the IEEE tables; output schema-validated.</p></div>
+      <div class="step dec"><span class="n">3.3</span><b>Confidence ≥ 0.6?</b><p>No → "needs human" plus the missing fact to collect. Yes → proposal.</p></div>
+    </div></div>
+    <div class="downarrow">↓</div>
+    <div class="lane"><div class="lbl">4 · Decide + close</div><div class="steps">
+      <div class="step"><span class="n">4.1</span><b>fix_proposal.json</b><p>Shown next to the incident on the dashboard.</p></div>
+      <div class="step dec"><span class="n">4.2</span><b>Engineer decision</b><p>Approve → ticket to AAA / network / device team. Edit → back to loop. Reject → reason stored.</p></div>
+      <div class="step"><span class="n">4.3</span><b>Verify live</b><p>Part 1 checks the success test; resolves the incident or re-opens it for the agent.</p></div>
+    </div></div>
+  </div>
+</section>
+
+<!-- PART 3 -->
+<section id="p3" class="p3">
+  <h2><span class="tag">Part 3</span> Error catalog + learning unknown errors</h2>
+  <p class="lead">The catalog (79 entries, 13 categories) maps every IEEE reason and status code, except the reserved ones, to a named problem. Anything that matches nothing is stored as OTHER and investigated by a discovery agent, which proposes new entries for human approval.</p>
+  <h3>High level</h3>
+  <div class="hl">
+    <div class="node"><b>Every event</b><span>frame, sequence, metric</span></div><div class="arr">→</div>
+    <div class="node accent"><b>In catalog?</b><span>yes → Part 1 incident → Part 2</span></div><div class="arr">→</div>
+    <div class="node"><b>OTHER store</b><span>no match, kept with context</span></div><div class="arr">→</div>
+    <div class="node accent"><b>Discovery agent</b><span>cluster, investigate, name it</span></div><div class="arr">→</div>
+    <div class="node"><b>Draft + backtest</b><span>entry, rule, fix; run on stored data</span></div><div class="arr">→</div>
+    <div class="node human"><b>Human review</b><span>approve → catalog v+1</span></div>
+    <div class="loop">↺ New version hot-reloads detectors, re-classifies stored OTHER events, and gives Part 2 new causes and fixes.</div>
+  </div>
+  <h3>Deep level</h3>
+  <div class="deep">
+    <div class="lane"><div class="lbl">1 · Capture unknowns</div><div class="steps">
+      <div class="step"><span class="n">1.1</span><b>OTHER-CODE</b><p>Reason/status/EAP code not mapped (reserved or vendor-specific values).</p></div>
+      <div class="step"><span class="n">1.2</span><b>OTHER-SEQ</b><p>Device story hit a transition the state machine does not define.</p></div>
+      <div class="step"><span class="n">1.3</span><b>OTHER-STAT</b><p>A metric jumped (z-score &gt; 4) and no detector explains it.</p></div>
+      <div class="step"><span class="n">1.4</span><b>Record</b><p>Masked ids, frame fields, ±10 s timeline, co-occurring incidents, metrics.</p></div>
+    </div></div>
+    <div class="downarrow">↓</div>
+    <div class="lane"><div class="lbl">2 · Discover</div><div class="steps">
+      <div class="step dec"><span class="n">2.1</span><b>When to run</b><p>Cluster ≥ 20 events, a high-severity hint, or hourly.</p></div>
+      <div class="step"><span class="n">2.2</span><b>Cluster</b><p>By code, transition, metric, sender role, device class.</p></div>
+      <div class="step"><span class="n">2.3</span><b>Investigate</b><p>Timelines, IEEE code text, related entries, change log (read-only).</p></div>
+      <div class="step dec"><span class="n">2.4</span><b>Variant or new?</b><p>Extend an existing entry, or draft a new one in the catalog schema.</p></div>
+    </div></div>
+    <div class="downarrow">↓</div>
+    <div class="lane"><div class="lbl">3 · Validate</div><div class="steps">
+      <div class="step"><span class="n">3.1</span><b>Safe rule DSL</b><p>JSON: match fields + window + group-by + threshold. No free-form code from the model.</p></div>
+      <div class="step"><span class="n">3.2</span><b>Automatic checks</b><p>Schema, unique id, every code exists in the IEEE tables.</p></div>
+      <div class="step"><span class="n">3.3</span><b>Backtest</b><p>Fires on the cluster, stays quiet on healthy periods (false-positive estimate).</p></div>
+    </div></div>
+    <div class="downarrow">↓</div>
+    <div class="lane"><div class="lbl">4 · Adopt</div><div class="steps">
+      <div class="step dec"><span class="n">4.1</span><b>Human review</b><p>Approve, edit, or reject (reject labels the cluster "benign" so it stops recurring).</p></div>
+      <div class="step"><span class="n">4.2</span><b>Merge</b><p>Version bump + changelog.</p></div>
+      <div class="step"><span class="n">4.3</span><b>Hot reload</b><p>Part 1 detectors reload; stored OTHER events re-classified; Part 2 learns the new fix.</p></div>
+    </div></div>
+  </div>
+</section>
+
+<footer>Airframe hackathon · system flows · numbers measured on the provided captures (8 sensors × 30 min). Proprietary and confidential; identifiers pseudonymised. Plain-text version: v3/flows.md.</footer>
+</main>
+</body>
+</html>

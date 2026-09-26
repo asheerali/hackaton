@@ -1,0 +1,60 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: airframe-backend:latest
+    ports:
+      - "8000:8000"
+    environment:
+      # Optional: with a key, Parts 2/3 use Claude; without one they fall back
+      # to the offline catalog playbook (labelled as such in the dashboard).
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AIRFRAME_MODEL: ${AIRFRAME_MODEL:-claude-opus-5}
+      AIRFRAME_AGENT_MODE: ${AIRFRAME_AGENT_MODE:-auto}
+      AIRFRAME_AUTOSTART: ${AIRFRAME_AUTOSTART:-1}
+      # Fix the MAC-hashing salt across restarts; leave unset to auto-generate one.
+      AIRFRAME_SALT: ${AIRFRAME_SALT:-}
+    volumes:
+      # Findings, unknown_events.jsonl and fix_history.jsonl survive a restart.
+      - airframe-out:/app/out
+      # Learned Part 3 catalog entries survive a restart.
+      - airframe-catalog-ext:/app/catalog
+      # Optional: drop raw sensorNN.pcap files in hackaton_airframe/hackaton_airframe/
+      # on the host to use --source pcap (the app decodes them itself, live, via the
+      # bundled tshark - no separate conversion step needed inside the container).
+      - ./hackaton_airframe:/app/hackaton_airframe:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: airframe-frontend:latest
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+    ports:
+      - "5173:5173"
+    environment:
+      # Service name on the compose network, not 127.0.0.1 - see vite.config.ts.
+      VITE_BACKEND_URL: http://backend:8000
+    volumes:
+      # Bind-mount only the editable source, so the container's own node_modules
+      # (installed at build time) is never shadowed by whatever is on the host.
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  airframe-out:
+  airframe-catalog-ext:

@@ -1,0 +1,305 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Airframe Analysis v3</title>
+<style>
+  :root{
+    --ink:#16181d; --ink2:#454b57; --ink3:#7a8190; --line:#dfe2e8; --soft:#f4f5f8; --paper:#ffffff;
+    --accent:#c8102e; --blue:#2458c6; --green:#1f8a4c; --amber:#b86e00; --red:#c62828; --violet:#6b3fb5; --teal:#0d7f73;
+    --crit-bg:#fdecec; --high-bg:#fff3e0; --med-bg:#fff8db; --ok-bg:#e8f5ec; --info-bg:#eef2fb;
+  }
+  @page { size: A4; margin: 14mm 14mm 16mm 14mm; }
+  *{box-sizing:border-box}
+  html,body{background:var(--paper);color:var(--ink);margin:0}
+  body{font:10.4pt/1.5 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif; max-width:820px; margin:0 auto; padding:0 16px}
+  h1{font-size:24pt;line-height:1.15;margin:0 0 6px;letter-spacing:-.5px}
+  h2{font-size:15pt;margin:22px 0 8px;padding-top:4px;border-top:2px solid var(--ink);display:flex;gap:10px;align-items:baseline}
+  h2 .n{color:var(--accent);font-weight:700}
+  h3{font-size:11.5pt;margin:14px 0 4px}
+  h2,h3{break-after:avoid;page-break-after:avoid}
+  p{margin:6px 0}
+  .page{page-break-after:always;break-after:page}
+  .keep{break-inside:avoid;page-break-inside:avoid}
+  .kicker{color:var(--accent);font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:8.5pt}
+  .muted{color:var(--ink3)} .small{font-size:9pt}
+  .lead{font-size:12pt;color:var(--ink2)}
+  .box{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--soft);margin:10px 0}
+  .answer{border-left:5px solid var(--accent);background:#fff5f6}
+  table{border-collapse:collapse;width:100%;margin:8px 0;font-size:9.2pt}
+  th,td{border-bottom:1px solid var(--line);padding:5px 7px;text-align:left;vertical-align:top}
+  th{background:var(--ink);color:#fff;font-weight:600}
+  tr:nth-child(even) td{background:#fafbfc}
+  tr{break-inside:avoid}
+  .sev{display:inline-block;font-size:8pt;font-weight:700;padding:1px 7px;border-radius:20px;white-space:nowrap}
+  .crit{background:var(--crit-bg);color:var(--red)} .high{background:var(--high-bg);color:var(--amber)}
+  .med{background:var(--med-bg);color:#8a6d00} .ok{background:var(--ok-bg);color:var(--green)} .info{background:var(--info-bg);color:var(--blue)}
+  .finding{border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:10px 0;break-inside:avoid;page-break-inside:avoid}
+  .finding h3{margin:0 0 4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .kpi{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff}
+  .kpi b{display:block;font-size:16pt;line-height:1.1}
+  .kpi span{font-size:8.5pt;color:var(--ink3)}
+  figure{margin:10px 0;break-inside:avoid;page-break-inside:avoid}
+  figcaption{font-size:8.8pt;color:var(--ink3);margin-top:4px}
+  ul,ol{margin:4px 0 4px 18px;padding:0} li{margin:2px 0}
+  code{font-family:Consolas,monospace;font-size:8.8pt;background:var(--soft);padding:0 4px;border-radius:3px}
+  .was{color:var(--ink3);text-decoration:line-through}
+  .flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;margin:8px 0}
+  .flow .n{flex:1 1 70px;min-width:0;border:1px solid var(--line);border-radius:9px;padding:6px 8px;font-size:8.6pt;background:#fff}
+  .flow .n b{display:block;font-size:9.2pt}
+  .flow .a{flex:0 0 16px;display:grid;place-items:center;color:var(--ink3)}
+  .p1 .n{border-color:#b9cbf3} .p2 .n{border-color:#f0c9a8} .p3 .n{border-color:#d6c5f2} .rt .n{border-color:#a9dcd5}
+  .foot{font-size:8pt;color:var(--ink3);border-top:1px solid var(--line);margin-top:16px;padding-top:6px}
+  @media (max-width:640px){ .grid2,.grid3,.grid4{grid-template-columns:1fr} body{font-size:10pt} }
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<section>
+  <div class="kicker">Airframe hackathon · IT / Network Engineering · Wireless Infrastructure</div>
+  <h1>Airframe analysis &amp; solution, v3</h1>
+  <p class="lead">Re-checked on the full recordings (8 sensors × 30 minutes, 1.1 million frames), plus the real-time design, the AI fix agent (Part 2) and the self-learning error catalog (Part 3).</p>
+  <p class="small muted">25 September 2026 · Every number in this report is recomputed by <code>verify_findings.py</code> (36/36 checks pass). Device addresses and network names are pseudonymised: L-nn laptops, H-nn phones/handhelds, I-nn IoT devices, APnn access points, NET-C corporate, NET-T tools.</p>
+
+  <div class="box answer">
+    <h3 style="margin-top:0">The answer in one paragraph</h3>
+    <p><b>For the whole 30 minutes, not one device could log in to the corporate Wi-Fi.</b> 63 devices (30 laptops, 33 phones) tried 654 times on 26 access points across all 8 channels. Every time, the access point asks "who are you?", nothing comes back from the network side, it asks again after 30 s, and after 60 s it throws the device out ("802.1X authentication failed"). Devices keep retrying, waiting longer each time. After 3 to 5 failures, 18 laptops are put on a fast-reject list and bounced within seconds of every attempt. Meanwhile the tools network on the same radios works perfectly. <b>This is one site-wide problem in the login service behind the Wi-Fi (RADIUS or the path to it), not a radio problem.</b> It creates a probe storm that wastes airtime for everyone. A real-time version of our tool would flag it 36 seconds after the first failed login.</p>
+  </div>
+
+  <div class="grid4">
+    <div class="kpi"><b style="color:var(--red)">0 / 654</b><span>corporate log-in attempts that got past the identity step</span></div>
+    <div class="kpi"><b style="color:var(--red)">63</b><span>corporate devices offline all 30 min (30 laptops, 33 phones)</span></div>
+    <div class="kpi"><b style="color:var(--amber)">18</b><span>laptops switched to fast-reject (1,477 bounce frames)</span></div>
+    <div class="kpi"><b style="color:var(--green)">31 / 31</b><span>tools-network handshakes where the AP accepted the device's key (M3)</span></div>
+    <div class="kpi"><b style="color:var(--amber)">217/s</b><span>peak probe replies; 31% re-sent (no acknowledgement)</span></div>
+    <div class="kpi"><b>8</b><span>devices whose access point never offers their network</span></div>
+    <div class="kpi"><b style="color:var(--teal)">36 s</b><span>time to detect in real time (measured by replay)</span></div>
+    <div class="kpi"><b style="color:var(--teal)">≈15×</b><span>laptop headroom over live traffic (9,552 frames/s)</span></div>
+  </div>
+
+  <h3>Findings, ranked</h3>
+  <table>
+    <tr><th style="width:26px">#</th><th>Finding</th><th style="width:70px">Severity</th><th style="width:70px">Confidence</th><th>Where</th></tr>
+    <tr><td>F1</td><td>Corporate 802.1X login stalls at "who are you?" for every device, all 30 min</td><td><span class="sev crit">Critical</span></td><td>High</td><td>Site: 26 APs, 8 channels, 8 sensors</td></tr>
+    <tr><td>F2</td><td>Join → kick → wait → retry loop, 8–14 cycles per device, waits grow from ~28 s to ~200 s</td><td><span class="sev high">High</span></td><td>High</td><td>All 63 corporate devices</td></tr>
+    <tr><td>F3</td><td>New: 18 laptops moved to fast-reject (reason 2 every 11–26 s)</td><td><span class="sev high">High</span></td><td>High (pattern) · Med (why)</td><td>18 APs, from 6.7 to 10.7 min</td></tr>
+    <tr><td>F4</td><td>Probe storm with 31% unacknowledged replies</td><td><span class="sev high">High</span></td><td>High</td><td>All channels; peak minute 3</td></tr>
+    <tr><td>F5</td><td>7 networks missing on 6 APs (AP13 silent); 8 devices can never join</td><td><span class="sev med">Medium</span></td><td>Medium</td><td>AP03, 06, 13, 16, 17, 28</td></tr>
+    <tr><td>F6</td><td>Beacons at 1 Mbit/s (impossible on 5 GHz) → 10–19% airtime if real</td><td><span class="sev med">Medium</span></td><td>Low</td><td>Worst on ch 36, 40</td></tr>
+    <tr><td>F7</td><td>Sensors hear access points far better than devices</td><td><span class="sev info">Info</span></td><td>High</td><td>All sensors</td></tr>
+    <tr><td>F8</td><td>15 devices said "I'm leaving" within 9 s at the start</td><td><span class="sev info">Watch</span></td><td>High</td><td>6 sensors</td></tr>
+    <tr><td>F9</td><td>Tools network (IoT) healthy; no roams, no rejects anywhere</td><td><span class="sev ok">Healthy</span></td><td>High</td><td>24 IoT devices</td></tr>
+  </table>
+</section>
+
+<!-- ============ REVIEW ============ -->
+<section>
+  <h2><span class="n">1</span> What changed when we looked at all 30 minutes</h2>
+  <p>v2 was built on the first 50 seconds of each recording. We converted the full recordings and re-tested every claim. The main story held; the scale, several numbers and one prediction did not.</p>
+  <table>
+    <tr><th style="width:36%">v2 said (50 s)</th><th>v3 verified (30 min)</th><th style="width:15%">Verdict</th></tr>
+    <tr><td>Recordings are ~33 min; JSON holds 2.5%</td><td>Exactly 30.0 min (1,802 s) each; old JSON held 2.8%</td><td>Corrected</td></tr>
+    <tr><td>16 laptops fail at the identity step</td><td>63 devices (30 laptops + 33 phones), 654 attempts, 0 past the identity step, 26 APs</td><td>Much bigger</td></tr>
+    <tr><td>Kick at 60 s (seen twice, outside the window)</td><td>506 kicks with reason 23; 488 of 489 measured exactly 60.0 s after join; re-ask 30.0 s</td><td>Confirmed</td></tr>
+    <tr><td>Loop: ~30 cycles per laptop predicted</td><td>8–14 cycles (median 10): devices wait longer each time (28 s → ~200 s)</td><td>Prediction wrong</td></tr>
+    <tr><td>(not visible)</td><td>18 laptops switch to fast-reject (reason 2) after 3–5 failures</td><td>New</td></tr>
+    <tr><td>4 laptops have no network to join</td><td>8 devices (4 laptops, 4 phones); networks stay missing all 30 min</td><td>Bigger</td></tr>
+    <tr><td>Probe storm ~56 replies/s, 32% re-sent</td><td>Mean 96.5/s, peak 217/s (minute 3), 31.3% re-sent every minute</td><td>Bigger</td></tr>
+    <tr><td>IoT devices send encrypted data</td><td>Only 4 of 24 are <i>heard</i> sending; the rest are proven connected by M3 (sensor cannot hear their uplink)</td><td>Corrected wording</td></tr>
+    <tr><td>Beacons missed ~2%</td><td>1.7–2.3% on all 53 networks; longest gap 0.41 s; no sensor ever went deaf</td><td>Confirmed</td></tr>
+    <tr><td>"1 Mbit/s rate may be a parsing error"</td><td>Wireshark reads the same 1 Mbit/s from the radio header: it is in the data</td><td>Confirmed</td></tr>
+  </table>
+
+  <h2><span class="n">2</span> How everything was verified</h2>
+  <ul>
+    <li><b>Two independent decoders agree.</b> Your scapy converter and Wireshark's tshark were compared on all 28,536 overlapping frames: every field matches (time, rate, channel, signal, type, flags, addresses, sequence, status and reason codes, EAP, EAPOL message numbers). The only difference is by design: tshark reports the on-air length of the 171 truncated data frames.</li>
+    <li><b>Security types read from the air, not guessed.</b> Beacons advertise NET-C with AKM 1 (802.1X) and NET-T with AKM 2 (pre-shared key).</li>
+    <li><b>Codes checked against the standard.</b> All reason, status and EAP meanings come from Wireshark 4.6.9's tables (IEEE 802.11-2020 and later, RFC 3748), saved in <code>catalog/ieee_codes.json</code>.</li>
+    <li><b>Every quoted number is re-computed</b> by <code>verify_findings.py</code>: 36/36 checks pass. My draft evidence had three wrong numbers (22 APs, 1.01 M beacons, 5 IoT devices); the checks caught them, and they are corrected to 26, 914,057 and 4.</li>
+    <li><b>Real time was measured, not estimated.</b> <code>realtime_bench.py</code> replays the real recordings into live tshark pipes (see section 4).</li>
+  </ul>
+  <div class="box small"><b>Signs this is an emulated scenario:</b> every device's first attempt falls on an exact 2-second schedule; signal strength never changes; 5 GHz beacons at 1 Mbit/s. Protocol logic transfers to real sites; airtime maths from this data does not.</div>
+</section>
+
+<!-- ============ FINDINGS ============ -->
+<section>
+  <h2><span class="n">3</span> What is wrong, and where</h2>
+
+  <div class="finding" style="border-color:#c62828">
+    <h3><span class="sev crit">Critical</span> F1. Corporate login never gets past "who are you?"</h3>
+    <p><b>Seen:</b> each attempt goes: knock (accepted) → sign in (accepted) → the access point sends "EAP Identity request" → no next question, no success, no failure, no key messages. The access point re-asks every <b>30.0 s</b> and kicks the device at <b>60.0 s</b> with reason 23 ("802.1X authentication failed"). 654 attempts, 63 devices, 26 access points, 8 channels, 0 successes.</p>
+    <p><b>Why the network side:</b> for the 12 devices the sensors can hear, the device answers its identity within 1 ms, every time; the next step belongs to the access point and the login server, and it never comes. On the tools network, same radios, the access point accepts the device's key (M3) in 31 of 31 handshakes seen. A radio or device fault would not hit 26 APs and two device types identically.</p>
+    <p><b>Most likely causes, in the order an engineer should check:</b> RADIUS/NPS server down or unreachable from the controller; wrong shared secret after a change; firewall/VLAN change on the controller-to-RADIUS path; RADIUS overloaded. Headers alone cannot tell these apart; the RADIUS and controller logs can.</p>
+  </div>
+
+  <figure>
+    {{FIG_TIMELINE}}
+    <figcaption>Figure 1. Four real devices over 30 minutes. L-01 and L-14 go through four slow kicks, then (orange) the network switches them to fast-reject. L-23 and phone H-01 stay in the slow 60-second cycle all the way. Attempts get further apart over time because devices back off.</figcaption>
+  </figure>
+
+  <div class="finding">
+    <h3><span class="sev high">High</span> F2. The retry loop: devices spend the whole 30 minutes failing</h3>
+    <p>Each corporate device made 8–14 attempts (median 10). The wait between a kick and the next try grows from a median of 28 s in the first 5 minutes to ~200 s after 20 minutes, so devices are offline and, over time, try less and less. This is the "deauth loop" from the brief; the tool links it to F1 instead of reporting 63 separate problems.</p>
+  </div>
+
+  <div class="finding">
+    <h3><span class="sev high">High</span> F3. New: 18 laptops are put on a fast-reject list</h3>
+    <p>After 3–5 slow kicks, 18 laptops (each on its own access point, all among APs 1–22) switch to a different treatment: the access point sends "previous authentication no longer valid" (reason 2) within a median of 8 s of every rejoin, and keeps repeating it every 11–15 s (as a deauth) or ~26 s (as a disassociation). 1,477 such frames. It starts one laptop at a time, about every 15 s, from 6.7 to 10.7 minutes; none of these laptops gets a reason-23 kick after its switch. The frames carry the access point's own running sequence numbers, so they are genuine, not spoofed.</p>
+    <p><b>Plant meaning:</b> this matches a controller "client exclusion / block-list after repeated 802.1X failures" policy. <b>Important for the fix:</b> repairing RADIUS will not bring these 18 laptops back until their exclusion is cleared or times out. Why only these 18 (and not the other 45 devices with more failures) cannot be seen in headers; it is a question for the controller configuration.</p>
+  </div>
+
+  <div class="finding">
+    <h3><span class="sev high">High</span> F4. Probe storm: devices search non-stop, a third of replies are lost</h3>
+    <figure>
+      {{FIG_PROBES}}
+      <figcaption>Figure 2. Access-point replies to device scans, per minute. The storm peaks while the most devices are failing, then eases as they back off.</figcaption>
+    </figure>
+    <p>173,964 probe replies in 30 minutes (mean 96.5/s, peak 217/s). 31.3% had to be re-sent because the device did not acknowledge, usually because it had already moved on to scan the next channel. Almost every retry in the data (54,484 of 54,544) is a probe reply. It reaches the healthy IoT devices too (3,049 replies). Fixing F1 should end it; if it does not, it is a separate problem.</p>
+  </div>
+
+  <div class="grid2">
+    <div class="finding">
+      <h3><span class="sev med">Medium</span> F5. Missing networks</h3>
+      <p class="small">Every AP should offer both networks. Missing for the full 30 min: NET-C on AP03, AP13, AP16, AP17; NET-T on AP06, AP13, AP28 (AP13 is not heard at all). The 8 devices "homed" on those APs (L-03, L-13, L-16, L-17, H-08, H-11, H-12, H-28) appear in 2,000–3,100 probe exchanges each and never join. Could be a disabled network or an AP on a channel no sensor covers: check the controller.</p>
+    </div>
+    <div class="finding">
+      <h3><span class="sev med">Medium</span> F6. Slow beacons</h3>
+      <p class="small">All 914,057 beacons are marked 1 Mbit/s, a rate that does not exist on 5 GHz. If real, adverts alone use 10–19% of each channel (19% on ch 36/40 with 9 networks). At 6 Mbit/s it would be 1.7–3%. Plant rule: minimum basic rate 12–24 Mbit/s and at most 2–3 networks per AP.</p>
+    </div>
+    <div class="finding">
+      <h3><span class="sev info">Info</span> F7. What sensors can and cannot hear</h3>
+      <p class="small">Access-point replies outnumber device scans 29 to 1 (173,964 vs 6,024). Only 12 of 63 corporate devices and 4 of 24 IoT devices are heard during their own join exchange. Beacon loss is 1.7–2.3% everywhere and no sensor ever went deaf. So the tool must judge from the access point's side and never treat "not heard" as "did not happen". Example: one IoT join shows key message 1 but not 3, yet the AP sets up Block-Ack 60 ms later: connected, frame just not captured.</p>
+    </div>
+    <div class="finding">
+      <h3><span class="sev ok">Healthy</span> F8–F9. Watch items and the good news</h3>
+      <p class="small">15 devices (laptops, phones, IoT) said "I'm leaving" within the first 9 s; one more at 12.4 min. On its own that is normal; as a burst it suggests a shared trigger. The tools network is healthy: 24 IoT devices, 31 handshakes reach M3 (M1→M3 in 0.3–2.5 ms), no key, MIC or group-key failures. No device roamed and no access point ever refused a knock or sign-in (all status codes 0).</p>
+    </div>
+  </div>
+
+  <div class="box small keep"><b>Several sensors, one story.</b> Each sensor listens on its own channel and hears its own access points; no network is heard by two sensors, so frame-level de-duplication finds nothing here. The link between sensors is the pattern: the same failure signature on 26 access points across all 8 sensors = <b>one root incident</b> with 63 affected devices, not 63 or 654 incidents. Sensor start times differ by up to 2.3 s, so cross-sensor matching allows several seconds of slack.</div>
+</section>
+
+<!-- ============ REAL TIME ============ -->
+<section class="page">
+  <h2><span class="n">4</span> Can it run in real time? Yes, and we measured it</h2>
+  <p>We replayed the real recordings into eight live tshark pipes (one per sensor), paced by the original timestamps, and timed each frame from "written to the pipe" to "decoded and processed in Python".</p>
+  <table>
+    <tr><th>Replay speed</th><th>Frames per second handled</th><th>Delay per frame, median / 99th percentile</th><th>Kept up?</th></tr>
+    <tr><td>1× (live pace, 60 s)</td><td>571 (the site's real rate)</td><td>2.8 ms / 10.5 ms</td><td>Yes</td></tr>
+    <tr><td>10× (10 min in 60 s)</td><td>6,681</td><td>1.5 ms / 8.3 ms</td><td>Yes</td></tr>
+    <tr><td>30× (30 min requested in 60 s)</td><td>9,552 (took 117 s)</td><td>2.2 ms / 9.9 ms</td><td>No, maximum ≈15× live</td></tr>
+  </table>
+  <p><b>What limits "real time" is the Wi-Fi protocol, not the computer.</b> A stall can only be called when the access point re-asks (30 s). With the rule "same stall on 3 access points", the site-wide incident appears at 47.5 s into the recording, <b>36 s after the first failing join</b>; the kicks confirm it at 77.5 s. Graphs and counters update every second.</p>
+  <div class="flow rt">
+    <div class="n"><b>Sensor stream</b>live pipe / dumpcap / replay</div><div class="a">→</div>
+    <div class="n"><b>tshark -r - -l</b>one per sensor</div><div class="a">→</div>
+    <div class="n"><b>Normalise + mask</b>hash MACs, label SSIDs</div><div class="a">→</div>
+    <div class="n"><b>Event queue</b>asyncio → Kafka/NATS</div><div class="a">→</div>
+    <div class="n"><b>State + counters</b>event-time timers, 5 s grace</div><div class="a">→</div>
+    <div class="n"><b>Incident store</b>SQLite / DuckDB</div><div class="a">→</div>
+    <div class="n"><b>Dashboard</b>server push every 1 s</div>
+  </div>
+  <h3>Design choices for the live dashboard</h3>
+  <table>
+    <tr><th style="width:30%">Choice</th><th>Why</th></tr>
+    <tr><td>tshark per sensor, reading a pipe with <code>-l</code></td><td>Measured: 30× faster than scapy (7,700 vs 244 frames/s per core) and line-flushed, so each frame is available at once.</td></tr>
+    <tr><td>Event-time timers + watermark</td><td>"Nothing happened for 30 s" must be judged on capture time, not arrival time, or a slow sensor creates false stalls.</td></tr>
+    <tr><td>5 s grace window when merging sensors</td><td>Sensor clocks differ by up to 2.3 s.</td></tr>
+    <tr><td>Incident lifecycle open → updating → resolved</td><td>The dashboard shows live counts on one incident instead of adding new rows every minute.</td></tr>
+    <tr><td>FastAPI + Server-Sent Events + a light chart library</td><td>True push to the browser each second; Streamlit is quicker to build but re-runs the whole page on every refresh. For the demo, a replay mode feeds the recorded files at 1× or faster.</td></tr>
+  </table>
+
+  <h2><span class="n">5</span> The three parts, at a glance</h2>
+  <p class="small">Full high-level and deep-level flows for every part are in <code>v3/flows.html</code> (styled) and <code>v3/flows.md</code> (Mermaid; all 8 diagrams render-tested).</p>
+  <h3 style="color:var(--blue)">Part 1: find WHAT is wrong and WHERE (real time)</h3>
+  <div class="flow p1">
+    <div class="n"><b>Frames</b>all sensors</div><div class="a">→</div>
+    <div class="n"><b>What can we see?</b>decode, mask, coverage</div><div class="a">→</div>
+    <div class="n"><b>What is wrong?</b>device stories + catalog match</div><div class="a">→</div>
+    <div class="n"><b>Count once</b>1 device = 1 incident; many APs = 1 root</div><div class="a">→</div>
+    <div class="n"><b>Where, how bad</b>APs, channels, sensors, severity</div><div class="a">→</div>
+    <div class="n"><b>Dashboard</b>+ hand-off</div>
+  </div>
+  <h3 style="color:var(--amber)">Part 2: AI agent proposes HOW TO FIX</h3>
+  <div class="flow p2">
+    <div class="n"><b>Incident</b>what, where, evidence</div><div class="a">→</div>
+    <div class="n"><b>Context pack</b>catalog entry, history, site info</div><div class="a">→</div>
+    <div class="n"><b>Investigate</b>read-only tools, rank causes</div><div class="a">→</div>
+    <div class="n"><b>Proposal</b>cause, check, fix, owner, risk, rollback, success test</div><div class="a">→</div>
+    <div class="n"><b>Human approves</b>→ ticket</div><div class="a">→</div>
+    <div class="n"><b>Verify live</b>Part 1 checks the test</div>
+  </div>
+  <p class="small"><b>Example output for F1:</b> <i>"802.1X stalls after identity on 26 APs, fixed 30 s / 60 s timers, tools network healthy → check whether RADIUS receives requests from the controller. Owner: identity/AAA team. After the fix, clear the client-exclusion list for 18 laptops (F3). Success test: zero reason-23 kicks and &gt; 95% logins succeeding for 10 minutes."</i> Guardrails: the agent's tools are read-only, every claim cites evidence, codes are checked against the IEEE tables, identifiers stay masked, and below 60% confidence it asks a human for the missing fact.</p>
+  <h3 style="color:var(--violet)">Part 3: catalog every known error; learn the unknown ones</h3>
+  <div class="flow p3">
+    <div class="n"><b>Every event</b>frame, sequence, metric</div><div class="a">→</div>
+    <div class="n"><b>In catalog?</b>yes → Part 1 → Part 2</div><div class="a">→</div>
+    <div class="n"><b>OTHER store</b>no match, kept with context</div><div class="a">→</div>
+    <div class="n"><b>Discovery agent</b>cluster, investigate</div><div class="a">→</div>
+    <div class="n"><b>Draft + backtest</b>entry, safe rule, fix</div><div class="a">→</div>
+    <div class="n"><b>Human review</b>→ catalog v+1, hot reload</div>
+  </div>
+</section>
+
+<!-- ============ CATALOG ============ -->
+<section>
+  <h2><span class="n">6</span> The error catalog (Part 3)</h2>
+  <p><code>catalog/error_catalog.json</code> (machine-readable) and <code>error_catalog.md</code> (readable) are generated by <code>catalog/build_catalog.py</code>. Each entry has: plain meaning, what it looks like in headers, detection rule and thresholds, the normal behaviour it must not be confused with, likely causes, how to confirm outside the headers, standard fix, owner team, related IEEE codes, and whether it appears in this data (with evidence).</p>
+  <div class="grid3">
+    <div class="kpi"><b>{{N_ENTRIES}}</b><span>catalog entries in {{N_CATS}} categories</span></div>
+    <div class="kpi"><b>63 / 63</b><span>802.11 reason codes mapped to an entry</span></div>
+    <div class="kpi"><b>120 / 139</b><span>status codes mapped; the other 19 are "Reserved" → OTHER</span></div>
+  </div>
+  {{CAT_TABLE}}
+  <p class="small"><b>The OTHER rule:</b> anything no entry matches is kept, never dropped: an unmapped or reserved code (OTHER-CODE), a sequence the device-story machine does not define (OTHER-SEQ), or a metric jump no detector explains (OTHER-STAT). These go to <code>unknown_events.jsonl</code> with ±10 s of context, and the discovery agent turns clusters of them into draft entries. Draft detection rules are written in a small JSON rule language (fields, time window, group-by, threshold) rather than free code, so they can be checked automatically and back-tested before a human approves them.</p>
+</section>
+
+<!-- ============ REFLECTION ============ -->
+<section class="page">
+  <h2><span class="n">7</span> Reflection: how sure are we?</h2>
+  <table>
+    <tr><th>Statement</th><th style="width:78px">Confidence</th><th>What would change it</th></tr>
+    <tr><td>Corporate logins stall at the identity step for every device, all 30 min</td><td>High</td><td>Nothing in this data; measured on 654 attempts</td></tr>
+    <tr><td>The cause is on the network/login-server side, not the devices</td><td>High</td><td>RADIUS logs showing it answered (would point at the controller instead)</td></tr>
+    <tr><td>F3 is a controller client-exclusion policy</td><td>Medium</td><td>Controller config/logs; headers show the behaviour, not the setting</td></tr>
+    <tr><td>The probe storm is caused by the login failure</td><td>Medium</td><td>Storm continuing after logins are fixed</td></tr>
+    <tr><td>The 7 networks are really missing</td><td>Medium</td><td>Finding them on a channel no sensor monitors</td></tr>
+    <tr><td>Real-time is feasible on a laptop</td><td>High</td><td>Measured: 15× headroom, ~10 ms p99 delay</td></tr>
+    <tr><td>Airtime numbers are physically meaningful</td><td>Low</td><td>The data shows emulation signs (1 Mbit/s on 5 GHz, constant signal)</td></tr>
+  </table>
+
+  <h2><span class="n">8</span> What to do next</h2>
+  <ol>
+    <li>Build Part 1 as a streaming pipeline on <code>json_full/</code> replay first, then on live pipes (skill file updated with the verified facts and the real-time design).</li>
+    <li>Wire detectors to catalog ids so every incident has a name, a meaning and a standard fix from day one.</li>
+    <li>Build the Part 2 agent with read-only tools over the incident store and catalog; start with F1 as the test case.</li>
+    <li>Add the OTHER store now, even before the Part 3 agent exists, so unknown events are kept from the first run.</li>
+    <li>Pitch opener: "0 of 654 corporate logins, tools network fine on the same radios, flagged in 36 seconds: it's the login server, not the Wi-Fi."</li>
+  </ol>
+
+  <h2><span class="n">9</span> Open questions for you</h2>
+  <ol>
+    <li>Which LLM access will the event provide for Parts 2 and 3 (Claude API key, model limits)? This decides whether the agents run live or on demand.</li>
+    <li>May the Part 2 agent read (not change) any system beyond the captures, such as a mock controller or RADIUS log, for the demo? If not, its "confirm" steps stay as instructions for humans.</li>
+    <li>Is there a device or AP inventory (even a list of expected APs and SSIDs)? It would turn F5 from "medium" into "high" confidence.</li>
+  </ol>
+
+  <h2><span class="n">A</span> Files</h2>
+  <table class="small">
+    <tr><td style="width:36%"><code>convert_full.py</code></td><td>Full-capture converter (tshark, 102 s for all 8 files) → <code>json_full/*.jsonl</code></td></tr>
+    <tr><td><code>validate_converter.py</code></td><td>Proves tshark output matches the scapy JSON on 28,536 frames</td></tr>
+    <tr><td><code>verify_findings.py</code></td><td>Recomputes every number in this report (36 checks)</td></tr>
+    <tr><td><code>realtime_bench.py</code></td><td>Live-pipe replay benchmark (speed, latency)</td></tr>
+    <tr><td><code>catalog/</code></td><td>IEEE code tables, catalog builder, <code>error_catalog.json/.md</code></td></tr>
+    <tr><td><code>v3/flows.html</code>, <code>v3/flows.md</code></td><td>High- and deep-level flows for real time, Part 1, Part 2, Part 3</td></tr>
+    <tr><td><code>.claude/skills/airframe-wifi-analysis/</code></td><td>Build guide and test oracle for the coding phase</td></tr>
+  </table>
+  <p class="foot">Proprietary and confidential. Built from the Airframe hackathon captures under NDA. Identifiers pseudonymised: L-nn laptops, H-nn phones/handhelds, I-nn IoT devices (nn = last address byte in decimal), APnn access points, NET-C corporate, NET-T tools.</p>
+</section>
+</body>
+</html>

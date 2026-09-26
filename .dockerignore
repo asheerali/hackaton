@@ -1,0 +1,33 @@
+# Keep the build context small: exclude everything not needed to build or run
+# the image. json_full/ and catalog/ are NOT excluded - the Dockerfile bakes
+# them in so the container is self-contained.
+
+.git
+.venv
+.airframe_salt
+__pycache__
+**/__pycache__
+*.pyc
+.pytest_cache
+
+# raw captures - large, not needed at runtime (host runs convert_full.py first)
+hackaton_airframe
+
+# node/python build artifacts (rebuilt fresh inside the image)
+node_modules
+frontend/node_modules
+frontend/dist
+frontend/tsconfig.tsbuildinfo
+
+# generated at runtime, not baked in
+out
+catalog/extensions.json
+
+# earlier report window (superseded by json_full) and hackathon docs, unused by the app
+json
+v2
+v3
+*.pdf
+*.pptx
+*.html
+python.py

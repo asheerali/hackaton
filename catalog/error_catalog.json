@@ -1,0 +1,3402 @@
+{
+ "version": "1.0.0",
+ "source_codes": "Wireshark 4.6.9 value_strings (tshark -G values), which follow IEEE 802.11-2020/802.11be and RFC 3748",
+ "categories": {
+  "DISC": "Discovery and beacons",
+  "AUTH": "802.11 authentication (open, SAE, FT)",
+  "ASSOC": "Association and reassociation",
+  "EAP": "802.1X / EAP (enterprise login)",
+  "KEY": "4-way and group-key handshakes",
+  "SESS": "Disconnects and session stability",
+  "ROAM": "Roaming",
+  "RF": "RF, airtime and congestion",
+  "CLIENT": "Client behaviour and power save",
+  "SEC": "Security signatures (passive detection only)",
+  "INFRA": "Infrastructure-level causes inferred from the air",
+  "SENS": "Sensor and data quality",
+  "OTHER": "Unclassified: goes to the discovery agent"
+ },
+ "entries": [
+  {
+   "id": "DISC-01",
+   "category": "DISC",
+   "name": "Network not broadcast on an AP radio",
+   "plain": "An access point advertises one of the site's networks but not the other, so devices that need it cannot find it there.",
+   "signature": "BSSID for SSID X heard from an AP whose other BSSIDs are heard on the same channel, but no beacon for SSID X from it.",
+   "detect": "For each AP (grouped by BSSID base), expected SSID set minus heard SSID set, over >= 60 s with the sensor alive.",
+   "normal_lookalike": "Network intentionally not deployed on that AP (needs config/inventory to rule out).",
+   "default_severity": "medium",
+   "likely_causes": [
+    "WLAN disabled on radio or AP group",
+    "profile push failed",
+    "AP in wrong group"
+   ],
+   "confirm_outside_headers": [
+    "controller WLAN-to-AP-group mapping"
+   ],
+   "standard_fix": [
+    "re-apply WLAN profile to AP group",
+    "fix AP group membership"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "NET-C missing on AP03, AP13, AP16, AP17; NET-T missing on AP06, AP13, AP28 for all 30 min; the 8 NET-C devices homed on those APs never join."
+   }
+  },
+  {
+   "id": "DISC-02",
+   "category": "DISC",
+   "name": "Access point silent",
+   "plain": "An access point that should exist is not heard at all.",
+   "signature": "No beacon from an expected AP on any monitored channel.",
+   "detect": "Expected AP list (inventory, or gap in AP numbering) minus APs heard, for >= 60 s.",
+   "normal_lookalike": "AP on a channel no sensor monitors.",
+   "default_severity": "high",
+   "likely_causes": [
+    "AP down or rebooting",
+    "PoE/switch port failure",
+    "AP moved to an unmonitored channel"
+   ],
+   "confirm_outside_headers": [
+    "switch port / PoE status",
+    "controller AP up/down list"
+   ],
+   "standard_fix": [
+    "restore power/uplink",
+    "replace AP"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "AP13 never heard in 30 min on the 8 monitored channels (could be on an unmonitored channel)."
+   }
+  },
+  {
+   "id": "DISC-03",
+   "category": "DISC",
+   "name": "Probe storm",
+   "plain": "Devices search for networks far more than normal, flooding the air with questions and answers.",
+   "signature": "Probe requests/responses per client or per channel far above baseline; often many clients at once.",
+   "detect": "Probe responses per client > 1/s sustained 60 s, or area-wide probe traffic > 3x rolling baseline.",
+   "normal_lookalike": "A few background scans per client per minute; burst during a roam.",
+   "default_severity": "high",
+   "likely_causes": [
+    "clients failing to connect keep scanning",
+    "aggressive client roaming settings",
+    "AP reboot wave"
+   ],
+   "confirm_outside_headers": [
+    "check which clients are failing (link to EAP/KEY incidents)"
+   ],
+   "standard_fix": [
+    "fix the underlying join failure",
+    "tune client scan/roam settings"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "173,964 probe responses in 30 min, peak 13,015/min (217/s) in minute 3, falling as failing clients back off."
+   }
+  },
+  {
+   "id": "DISC-04",
+   "category": "DISC",
+   "name": "Probe unanswered",
+   "plain": "Devices ask for a network and no access point answers.",
+   "signature": "Directed probe requests for SSID X with no probe response for X within 100 ms on that channel.",
+   "detect": "Unanswered directed probes per SSID per channel > 50% over 60 s.",
+   "normal_lookalike": "Client probing on a channel where the network is simply not deployed.",
+   "default_severity": "medium",
+   "likely_causes": [
+    "SSID not configured on local APs",
+    "coverage hole"
+   ],
+   "confirm_outside_headers": [
+    "RF plan vs client location"
+   ],
+   "standard_fix": [
+    "deploy SSID / fix coverage"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "partial",
+   "dataset": {
+    "seen": null,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "DISC-05",
+   "category": "DISC",
+   "name": "Beacon loss",
+   "plain": "The access point's heartbeat goes missing more than normal.",
+   "signature": "Beacon gaps of 2x..N x beacon interval for a BSSID while other BSSIDs are heard by the same sensor.",
+   "detect": "Loss > 10% for a BSSID over 60 s, sensor alive.",
+   "normal_lookalike": "~1-3% loss at a distant sensor is normal.",
+   "default_severity": "low",
+   "likely_causes": [
+    "interference",
+    "AP overloaded",
+    "sensor far away"
+   ],
+   "confirm_outside_headers": [
+    "AP CPU/channel utilisation"
+   ],
+   "standard_fix": [
+    "check interference / AP health"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": "Loss 1.7-2.3% on all 53 BSSIDs, max gap 0.41 s: below threshold, not an incident."
+   }
+  },
+  {
+   "id": "DISC-06",
+   "category": "DISC",
+   "name": "Channel change / DFS event",
+   "plain": "An access point jumps to another channel, briefly disconnecting its devices.",
+   "signature": "Channel Switch Announcement element in beacons; BSSID disappears from one sensor and appears on another; mass deauth.",
+   "detect": "Any CSA element, or BSSID first-heard on a new channel after vanishing.",
+   "normal_lookalike": "Planned channel change in a maintenance window.",
+   "default_severity": "medium",
+   "likely_causes": [
+    "radar detection (DFS)",
+    "auto channel planning"
+   ],
+   "confirm_outside_headers": [
+    "controller RF event log"
+   ],
+   "standard_fix": [
+    "pin non-DFS channels for critical areas"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": "0 CSA elements, every BSSID stays on one channel."
+   }
+  },
+  {
+   "id": "DISC-07",
+   "category": "DISC",
+   "name": "Beacon configuration drift",
+   "plain": "An access point changes what it advertises (security, rates, capabilities) without a planned change.",
+   "signature": "Hash of beacon elements for a BSSID changes over time.",
+   "detect": "Element hash change for a BSSID outside change window.",
+   "normal_lookalike": "Planned configuration push.",
+   "default_severity": "low",
+   "likely_causes": [
+    "config push",
+    "firmware change"
+   ],
+   "confirm_outside_headers": [
+    "controller audit log"
+   ],
+   "standard_fix": [
+    "roll back or confirm change"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": null,
+    "evidence": "Not assessed: converter does not keep full element hash yet."
+   }
+  },
+  {
+   "id": "DISC-08",
+   "category": "DISC",
+   "name": "Too many networks per channel",
+   "plain": "Too many networks share one radio lane, so their adverts crowd the air.",
+   "signature": "Count of BSSIDs beaconing on one channel.",
+   "detect": "> 6 BSSIDs per channel heard by one sensor.",
+   "normal_lookalike": "",
+   "default_severity": "low",
+   "likely_causes": [
+    "too many SSIDs per AP",
+    "too many APs on the same channel"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "reduce SSIDs",
+    "re-plan channels"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "5-9 BSSIDs per channel; 9 on channels 36 and 40."
+   }
+  },
+  {
+   "id": "AUTH-01",
+   "category": "AUTH",
+   "name": "802.11 authentication rejected",
+   "plain": "The access point refuses the very first 'may I talk to you' step.",
+   "signature": "Authentication seq 2 with status != 0.",
+   "detect": "Any non-zero status on Authentication response; group by status.",
+   "normal_lookalike": "Single reject followed by success on another AP.",
+   "default_severity": "high",
+   "likely_causes": [
+    "algorithm mismatch",
+    "SAE/password problems",
+    "ACL"
+   ],
+   "confirm_outside_headers": [
+    "controller client log"
+   ],
+   "standard_fix": [
+    "fix client/AP security profile"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": [
+     1,
+     13,
+     14,
+     15,
+     16
+    ]
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": "All 685 authentication responses status 0."
+   }
+  },
+  {
+   "id": "AUTH-02",
+   "category": "AUTH",
+   "name": "802.11 authentication timeout",
+   "plain": "A device asks to talk and never gets an answer.",
+   "signature": "Authentication seq 1 from client, no seq 2 from AP within 100 ms (repeated).",
+   "detect": "3+ unanswered auth requests from one client in 10 s, AP otherwise alive.",
+   "normal_lookalike": "Sensor did not hear the AP's answer (check visibility).",
+   "default_severity": "medium",
+   "likely_causes": [
+    "AP overloaded",
+    "client on wrong channel/BSSID"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "check AP load"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "partial",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "AUTH-03",
+   "category": "AUTH",
+   "name": "WPA3-SAE failure",
+   "plain": "Password-based WPA3 login fails.",
+   "signature": "SAE (auth alg 3) commit/confirm with non-zero status or repeated commits.",
+   "detect": "Status 76/77/123/126 or >= 3 SAE commit rounds without confirm.",
+   "normal_lookalike": "Anti-clogging token exchange (status 76) once is normal under load.",
+   "default_severity": "high",
+   "likely_causes": [
+    "wrong password",
+    "unsupported group",
+    "password identifier unknown"
+   ],
+   "confirm_outside_headers": [
+    "client and AP SAE settings"
+   ],
+   "standard_fix": [
+    "fix passphrase / SAE groups"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": [
+     76,
+     77,
+     123,
+     126
+    ]
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "AUTH-04",
+   "category": "AUTH",
+   "name": "Fast-transition (802.11r) authentication failure",
+   "plain": "A fast roam fails and the device has to do a full login.",
+   "signature": "Auth alg 2 (FT) with non-zero status, or reassoc with FT elements rejected.",
+   "detect": "Status 28/52/53/54/55 on FT auth/reassoc.",
+   "normal_lookalike": "",
+   "default_severity": "medium",
+   "likely_causes": [
+    "R0KH unreachable",
+    "stale key cache",
+    "mobility domain mismatch"
+   ],
+   "confirm_outside_headers": [
+    "controller FT/mobility config"
+   ],
+   "standard_fix": [
+    "fix mobility domain / key distribution"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": [
+     28,
+     52,
+     53,
+     54,
+     55
+    ]
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "AUTH-05",
+   "category": "AUTH",
+   "name": "Authentication flood",
+   "plain": "Many authentication attempts at once, overloading an access point.",
+   "signature": "Auth requests per AP far above baseline, many clients.",
+   "detect": "> 20 auth requests/s on one AP for 10 s.",
+   "normal_lookalike": "Shift start: many devices join at once (short burst).",
+   "default_severity": "medium",
+   "likely_causes": [
+    "reboot wave",
+    "attack or misbehaving client"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "rate-limit / investigate source"
+   ],
+   "owner": "security",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "partial",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "ASSOC-01",
+   "category": "ASSOC",
+   "name": "Association rejected: AP full / capacity",
+   "plain": "The access point says it cannot take more devices.",
+   "signature": "Association response status 17 (or 33, 93).",
+   "detect": "Any status 17/33/93; count per AP.",
+   "normal_lookalike": "",
+   "default_severity": "high",
+   "likely_causes": [
+    "too many clients per radio at shift start",
+    "client limit too low"
+   ],
+   "confirm_outside_headers": [
+    "AP client counts"
+   ],
+   "standard_fix": [
+    "add capacity / raise limit / load-balance"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": [
+     17,
+     33,
+     93
+    ]
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "ASSOC-02",
+   "category": "ASSOC",
+   "name": "Association rejected: capability or rate mismatch",
+   "plain": "The device does not support something the network requires.",
+   "signature": "Status 10, 18, 19, 22-25, 27, 35, 51, 104, 119, 135.",
+   "detect": "Any such status.",
+   "normal_lookalike": "",
+   "default_severity": "medium",
+   "likely_causes": [
+    "legacy device on HT/VHT-only network",
+    "basic rates set too high for device"
+   ],
+   "confirm_outside_headers": [
+    "device spec vs WLAN rate/capability profile"
+   ],
+   "standard_fix": [
+    "adjust WLAN profile or replace device"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": [
+     10,
+     18,
+     19,
+     22,
+     23,
+     24,
+     25,
+     27,
+     35,
+     51,
+     103,
+     104,
+     119,
+     135
+    ]
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "ASSOC-03",
+   "category": "ASSOC",
+   "name": "Association rejected: PMF / temporary",
+   "plain": "The network requires protected management frames or asks the device to come back later.",
+   "signature": "Status 30 (try later) or 31 (robust management frame policy violation).",
+   "detect": "Status 31 any time; status 30 repeated without later success.",
+   "normal_lookalike": "One status 30 followed by success (PMF SA query) is normal.",
+   "default_severity": "medium",
+   "likely_causes": [
+    "legacy device on PMF-required WLAN",
+    "stale association"
+   ],
+   "confirm_outside_headers": [
+    "WLAN PMF setting vs device"
+   ],
+   "standard_fix": [
+    "set PMF optional for that SSID or update device"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": [
+     30,
+     31
+    ]
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "ASSOC-04",
+   "category": "ASSOC",
+   "name": "Association rejected: security (RSN) mismatch",
+   "plain": "The device and network disagree on the security settings.",
+   "signature": "Status 40-46, 72.",
+   "detect": "Any such status.",
+   "normal_lookalike": "",
+   "default_severity": "high",
+   "likely_causes": [
+    "cipher/AKM mismatch",
+    "WPA2/WPA3 transition misconfig"
+   ],
+   "confirm_outside_headers": [
+    "WLAN security profile vs device"
+   ],
+   "standard_fix": [
+    "align cipher/AKM"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": [
+     40,
+     41,
+     42,
+     43,
+     44,
+     45,
+     46,
+     72
+    ]
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "ASSOC-05",
+   "category": "ASSOC",
+   "name": "Association refused: policy or external reason",
+   "plain": "The access point refuses for a reason outside the Wi-Fi standard (policy, ACL, controller).",
+   "signature": "Status 1, 12, 92, 125.",
+   "detect": "Any such status.",
+   "normal_lookalike": "",
+   "default_severity": "medium",
+   "likely_causes": [
+    "ACL/MAC filter",
+    "controller policy",
+    "client blocklist"
+   ],
+   "confirm_outside_headers": [
+    "controller client log"
+   ],
+   "standard_fix": [
+    "fix policy / remove block"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": [
+     1,
+     12,
+     92,
+     125
+    ]
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "ASSOC-06",
+   "category": "ASSOC",
+   "name": "Reassociation denied",
+   "plain": "A device moving between access points is refused.",
+   "signature": "Reassociation response status 11 (or non-zero).",
+   "detect": "Any non-zero reassoc status.",
+   "normal_lookalike": "",
+   "default_severity": "medium",
+   "likely_causes": [
+    "roam to AP that lost state",
+    "controller mobility issue"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "check mobility group"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": [
+     11
+    ]
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "ASSOC-07",
+   "category": "ASSOC",
+   "name": "Association timeout",
+   "plain": "A device asks to join and gets no answer.",
+   "signature": "Assoc request with no response within 100 ms, repeated.",
+   "detect": "3+ unanswered assoc requests in 10 s.",
+   "normal_lookalike": "Response missed by sensor.",
+   "default_severity": "medium",
+   "likely_causes": [
+    "AP overloaded"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "check AP"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "partial",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "ASSOC-08",
+   "category": "ASSOC",
+   "name": "QoS / traffic-stream request refused",
+   "plain": "A device's request for guaranteed bandwidth (voice/video stream) or a scheduled service was refused.",
+   "signature": "ADDTS/TS/scheduling responses with these statuses (Action frames).",
+   "detect": "Any such status; group by AP.",
+   "normal_lookalike": "Occasional refusals under load.",
+   "default_severity": "low",
+   "likely_causes": [
+    "admission control limits",
+    "QoS policy"
+   ],
+   "confirm_outside_headers": [
+    "WMM/admission config"
+   ],
+   "standard_fix": [
+    "tune admission control"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": [
+     2,
+     3,
+     6,
+     7,
+     32,
+     37,
+     38,
+     39,
+     47,
+     49,
+     50,
+     56,
+     57,
+     58,
+     80,
+     81,
+     83,
+     84,
+     97,
+     98,
+     100,
+     101,
+     102,
+     116,
+     117,
+     118,
+     128,
+     129,
+     133,
+     134,
+     141
+    ]
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "ASSOC-09",
+   "category": "ASSOC",
+   "name": "Wi-Fi 7 multi-link / priority-access refused",
+   "plain": "A newer Wi-Fi 7 device could not join or use a link on a multi-link access point.",
+   "signature": "Statuses 130-132, 139, 140.",
+   "detect": "Any such status.",
+   "normal_lookalike": "",
+   "default_severity": "medium",
+   "likely_causes": [
+    "MLD config mismatch",
+    "EPCS authorisation"
+   ],
+   "confirm_outside_headers": [
+    "AP MLD config"
+   ],
+   "standard_fix": [
+    "align MLO settings"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": [
+     130,
+     131,
+     132,
+     139,
+     140
+    ]
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "ASSOC-10",
+   "category": "ASSOC",
+   "name": "Other advanced-feature refusal",
+   "plain": "A request for an optional feature (power save scheduling, fast session transfer, spectrum/energy features) was refused.",
+   "signature": "Statuses listed in codes.",
+   "detect": "Any such status; informational unless repeated for one client.",
+   "normal_lookalike": "",
+   "default_severity": "low",
+   "likely_causes": [
+    "feature not supported/allowed"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "disable feature on client or enable on AP"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": [
+     5,
+     73,
+     74,
+     75,
+     78,
+     79,
+     82,
+     85,
+     86,
+     87,
+     88,
+     89,
+     94,
+     96,
+     99,
+     105,
+     106,
+     107,
+     108,
+     109,
+     110,
+     111,
+     121,
+     122
+    ]
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "DISC-09",
+   "category": "DISC",
+   "name": "Passpoint / ANQP query failure",
+   "plain": "A device asking the network for service information (Hotspot 2.0) got no or a failed answer.",
+   "signature": "GAS/ANQP responses with these statuses.",
+   "detect": "Any such status.",
+   "normal_lookalike": "",
+   "default_severity": "low",
+   "likely_causes": [
+    "ANQP server unreachable",
+    "Passpoint misconfig"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "fix ANQP/advertisement server"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": [
+     59,
+     60,
+     61,
+     62,
+     63,
+     64,
+     65,
+     67,
+     68,
+     95,
+     120
+    ]
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "AUTH-06",
+   "category": "AUTH",
+   "name": "FILS authentication failure",
+   "plain": "Fast initial link setup (FILS) login failed.",
+   "signature": "Auth alg 4-6 with status 112/113.",
+   "detect": "Any such status.",
+   "normal_lookalike": "",
+   "default_severity": "medium",
+   "likely_causes": [
+    "unknown authentication server",
+    "FILS key problem"
+   ],
+   "confirm_outside_headers": [
+    "AAA config for FILS"
+   ],
+   "standard_fix": [
+    "fix FILS/AAA config"
+   ],
+   "owner": "identity/AAA",
+   "codes": {
+    "reason": [],
+    "status": [
+     112,
+     113
+    ]
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "EAP-01",
+   "category": "EAP",
+   "name": "802.1X stall after EAP Identity",
+   "plain": "The badge check never starts: the access point asks 'who are you?' and nothing happens after that.",
+   "signature": "Assoc OK, EAP Request/Identity from AP, optionally Response/Identity from client, then no EAP method request, no Success/Failure, no EAPOL M1; AP re-sends Identity request on a fixed timer.",
+   "detect": "No EAP method round within 20 s of Identity; confirm with >= 1 re-ask on a fixed interval.",
+   "normal_lookalike": "Slow but successful EAP (record as latency).",
+   "default_severity": "critical",
+   "likely_causes": [
+    "RADIUS/AAA server down or unreachable",
+    "wrong RADIUS shared secret",
+    "controller-to-RADIUS firewall/VLAN change",
+    "RADIUS overloaded"
+   ],
+   "confirm_outside_headers": [
+    "RADIUS server logs (requests arriving?)",
+    "controller AAA server status/counters",
+    "ping/port test controller -> RADIUS"
+   ],
+   "standard_fix": [
+    "restore RADIUS reachability",
+    "fix shared secret",
+    "fail over to secondary RADIUS"
+   ],
+   "owner": "identity/AAA",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "654 NET-C join attempts by 63 devices on 26 APs, 0 EAP method rounds, 0 Success/Failure, 0 M1; re-ask median 30.0 s; 12 devices seen answering Identity."
+   }
+  },
+  {
+   "id": "EAP-02",
+   "category": "EAP",
+   "name": "802.1X stall mid-method",
+   "plain": "The badge check starts but stops half way.",
+   "signature": "EAP method rounds (TLS/PEAP) start, then stop without Success/Failure.",
+   "detect": "Last EAP frame is a method request/response and nothing follows for 20 s.",
+   "normal_lookalike": "Large TLS certificate chains take several rounds (slow, not stuck).",
+   "default_severity": "high",
+   "likely_causes": [
+    "certificate problem",
+    "MTU/fragmentation of EAP-TLS",
+    "RADIUS policy stuck"
+   ],
+   "confirm_outside_headers": [
+    "RADIUS logs for the session"
+   ],
+   "standard_fix": [
+    "fix certificate chain / fragment size"
+   ],
+   "owner": "identity/AAA",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "EAP-03",
+   "category": "EAP",
+   "name": "EAP Failure",
+   "plain": "The badge server explicitly says no.",
+   "signature": "EAP code 4 (Failure).",
+   "detect": "Any EAP Failure; group by client.",
+   "normal_lookalike": "",
+   "default_severity": "high",
+   "likely_causes": [
+    "wrong credentials",
+    "expired certificate",
+    "account disabled",
+    "policy mismatch"
+   ],
+   "confirm_outside_headers": [
+    "RADIUS reject reason"
+   ],
+   "standard_fix": [
+    "fix credentials/cert/policy"
+   ],
+   "owner": "identity/AAA",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": "0 EAP Failure frames."
+   }
+  },
+  {
+   "id": "EAP-04",
+   "category": "EAP",
+   "name": "Kicked out: 802.1X authentication failed (reason 23)",
+   "plain": "The access point throws the device out because the badge check failed or timed out.",
+   "signature": "Deauthentication reason 23 from AP.",
+   "detect": "Any reason 23; link to EAP-01/02/03 for cause.",
+   "normal_lookalike": "",
+   "default_severity": "high",
+   "likely_causes": [
+    "see EAP-01..03"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "fix the underlying EAP problem"
+   ],
+   "owner": "identity/AAA",
+   "codes": {
+    "reason": [
+     23
+    ],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "506 reason-23 deauths; 488 of 489 measured exactly 60.0 s after association."
+   }
+  },
+  {
+   "id": "EAP-05",
+   "category": "EAP",
+   "name": "Client does not answer EAP Identity",
+   "plain": "The device never replies to 'who are you?'.",
+   "signature": "Repeated EAP Request/Identity with no Response/Identity while client frames are otherwise heard.",
+   "detect": "3+ Identity requests unanswered while the sensor hears that client.",
+   "normal_lookalike": "Sensor cannot hear that client's uplink (check visibility first).",
+   "default_severity": "high",
+   "likely_causes": [
+    "supplicant not configured for 802.1X",
+    "device expects PSK",
+    "driver bug"
+   ],
+   "confirm_outside_headers": [
+    "device Wi-Fi profile"
+   ],
+   "standard_fix": [
+    "deploy correct Wi-Fi profile to device"
+   ],
+   "owner": "device",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "partial",
+   "dataset": {
+    "seen": null,
+    "evidence": "51 NET-C devices never heard answering, but 0 of their own join frames are heard either (vs ~48 each for the 12 that are heard answering): a visibility gap, not evidence."
+   }
+  },
+  {
+   "id": "EAP-06",
+   "category": "EAP",
+   "name": "Slow 802.1X",
+   "plain": "Login works but takes too long, delaying the device every time it connects.",
+   "signature": "Identity -> Success > 2 s.",
+   "detect": "Median EAP duration per SSID > 2 s over 10 attempts.",
+   "normal_lookalike": "",
+   "default_severity": "medium",
+   "likely_causes": [
+    "RADIUS latency",
+    "remote RADIUS over WAN"
+   ],
+   "confirm_outside_headers": [
+    "RADIUS response times"
+   ],
+   "standard_fix": [
+    "local RADIUS / caching / PMK caching"
+   ],
+   "owner": "identity/AAA",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "EAP-07",
+   "category": "EAP",
+   "name": "EAPOL-Start storm",
+   "plain": "Devices keep restarting the badge check.",
+   "signature": "Many EAPOL-Start frames from clients.",
+   "detect": "> 3 EAPOL-Start per client per minute.",
+   "normal_lookalike": "",
+   "default_severity": "medium",
+   "likely_causes": [
+    "supplicant retry loop"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "fix supplicant config"
+   ],
+   "owner": "device",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "EAP-08",
+   "category": "EAP",
+   "name": "EAP method mismatch (NAK)",
+   "plain": "Device and server cannot agree on the badge-check method.",
+   "signature": "EAP Response type 3 (Legacy Nak).",
+   "detect": "Any Nak followed by failure/timeout.",
+   "normal_lookalike": "One Nak then agreement is normal.",
+   "default_severity": "medium",
+   "likely_causes": [
+    "server offers TLS, client wants PEAP (or vice versa)"
+   ],
+   "confirm_outside_headers": [
+    "RADIUS policy"
+   ],
+   "standard_fix": [
+    "align EAP methods"
+   ],
+   "owner": "identity/AAA",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "KEY-01",
+   "category": "KEY",
+   "name": "4-way handshake: M2 never arrives (wrong key suspected)",
+   "plain": "The access point starts handing out the locker key but the device never answers correctly.",
+   "signature": "EAPOL M1 repeated (replay counter increments) with no M3; often ends with reason 15 or 2.",
+   "detect": "M1 sent >= 2 times without M3 within 5 s.",
+   "normal_lookalike": "One M1 retransmit then M3.",
+   "default_severity": "high",
+   "likely_causes": [
+    "wrong PSK after key rotation",
+    "weak uplink",
+    "client driver"
+   ],
+   "confirm_outside_headers": [
+    "PSK on device vs controller"
+   ],
+   "standard_fix": [
+    "update PSK on device"
+   ],
+   "owner": "device",
+   "codes": {
+    "reason": [
+     15
+    ],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": "All 32 M1s to IoT are single; 31 followed by M3 in 0.3-2.5 ms."
+   }
+  },
+  {
+   "id": "KEY-02",
+   "category": "KEY",
+   "name": "4-way handshake: M4 missing / keys not installed",
+   "plain": "The device got the key but never confirmed it.",
+   "signature": "M3 repeated, no protected data afterwards, reason 15.",
+   "detect": "M3 sent >= 2 times without data or M4.",
+   "normal_lookalike": "M4 not heard by this sensor but data follows.",
+   "default_severity": "high",
+   "likely_causes": [
+    "client power-save",
+    "driver bug"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "driver update"
+   ],
+   "owner": "device",
+   "codes": {
+    "reason": [
+     15
+    ],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "KEY-03",
+   "category": "KEY",
+   "name": "MIC failure",
+   "plain": "The integrity check fails, often a wrong key or tampering.",
+   "signature": "Deauth reason 14, or M2 followed by M1 retransmit (bad MIC).",
+   "detect": "Any reason 14.",
+   "normal_lookalike": "",
+   "default_severity": "high",
+   "likely_causes": [
+    "wrong PSK",
+    "TKIP countermeasures"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "fix key"
+   ],
+   "owner": "security",
+   "codes": {
+    "reason": [
+     14
+    ],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "KEY-04",
+   "category": "KEY",
+   "name": "Group key handshake timeout",
+   "plain": "Devices miss the shared broadcast key update and drop.",
+   "signature": "Deauth reason 16.",
+   "detect": "Any reason 16; cluster by time (GTK rekey interval).",
+   "normal_lookalike": "",
+   "default_severity": "medium",
+   "likely_causes": [
+    "power-save clients sleeping through rekey"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "lengthen GTK rekey / fix PS"
+   ],
+   "owner": "device",
+   "codes": {
+    "reason": [
+     16
+    ],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "KEY-05",
+   "category": "KEY",
+   "name": "Security element mismatch in handshake",
+   "plain": "Security details differ between advert and handshake (possible downgrade).",
+   "signature": "Deauth reason 17-22, 24.",
+   "detect": "Any such reason.",
+   "normal_lookalike": "",
+   "default_severity": "high",
+   "likely_causes": [
+    "misconfig",
+    "downgrade attack"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "align RSN config"
+   ],
+   "owner": "security",
+   "codes": {
+    "reason": [
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     24
+    ],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "KEY-06",
+   "category": "KEY",
+   "name": "Handshake step not observed (visibility gap)",
+   "plain": "A handshake message was not captured, but later frames prove the step happened; not a failure.",
+   "signature": "M1 seen, M3 not seen, but AP continues the association (e.g. Block-Ack setup) and no failure reason follows.",
+   "detect": "Emit as info only; never as an incident.",
+   "normal_lookalike": "",
+   "default_severity": "info",
+   "likely_causes": [
+    "sensor missed the frame"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "none"
+   ],
+   "owner": "none",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "1 IoT join: M1 then Block-Ack setup from AP 60 ms later, no deauth; M3 simply not captured."
+   }
+  },
+  {
+   "id": "SESS-01",
+   "category": "SESS",
+   "name": "Join-fail-kick loop",
+   "plain": "A device keeps trying to connect, fails, is thrown out, waits and tries again, over and over.",
+   "signature": ">= 3 cycles of association -> failure/deauth for one client within 10 min.",
+   "detect": "Count cycles per client; one incident per client, linked to cause.",
+   "normal_lookalike": "A single deauth during a roam.",
+   "default_severity": "high",
+   "likely_causes": [
+    "any persistent join failure (EAP-01, KEY-01, ...)"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "fix the linked root cause"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "63 NET-C devices, 654 cycles; backoff grows from ~28 s (first 5 min) to ~200 s (after 20 min)."
+   }
+  },
+  {
+   "id": "SESS-02",
+   "category": "SESS",
+   "name": "Fast reject / client exclusion (reason 2 repeated)",
+   "plain": "After several failures the network starts throwing the device out within seconds of every attempt, and keeps repeating it.",
+   "signature": "Repeated deauth or disassoc reason 2 from AP to one client every ~10-30 s; each rejoin rejected within seconds; no more reason 23.",
+   "detect": ">= 3 reason-2 deauth/disassoc to one client within 2 min.",
+   "normal_lookalike": "One reason-2 after an AP-side state reset.",
+   "default_severity": "high",
+   "likely_causes": [
+    "controller client-exclusion / block-list after repeated 802.1X failures",
+    "AP lost session state"
+   ],
+   "confirm_outside_headers": [
+    "controller excluded-client list and its timer"
+   ],
+   "standard_fix": [
+    "clear exclusion after fixing root cause",
+    "review exclusion policy"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [
+     2
+    ],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "18 laptops (on 18 APs) switch after 3-5 reason-23 kicks, from 402 s to 641 s; 1,477 reason-2 frames at ~11-15 s (deauth) or ~26 s (disassoc) intervals; 0 reason-23 afterwards."
+   }
+  },
+  {
+   "id": "SESS-03",
+   "category": "SESS",
+   "name": "Idle / inactivity disconnect",
+   "plain": "The network drops a device it thinks is idle.",
+   "signature": "Deauth/disassoc reason 4.",
+   "detect": "Many reason 4 on devices that are expected to stay online.",
+   "normal_lookalike": "Idle laptops overnight.",
+   "default_severity": "low",
+   "likely_causes": [
+    "idle timeout too short for IoT"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "raise idle timeout for device class"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [
+     4
+    ],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "SESS-04",
+   "category": "SESS",
+   "name": "Disconnected because AP is full",
+   "plain": "The access point drops devices because it is overloaded.",
+   "signature": "Reason 5 or 33.",
+   "detect": "Any.",
+   "normal_lookalike": "",
+   "default_severity": "high",
+   "likely_causes": [
+    "capacity"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "add capacity"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [
+     5,
+     33
+    ],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "SESS-05",
+   "category": "SESS",
+   "name": "State mismatch frames (class 2/3)",
+   "plain": "The device and access point disagree about whether the device is connected.",
+   "signature": "Deauth reason 6/7/9.",
+   "detect": "> 3 per client in 5 min.",
+   "normal_lookalike": "One after an AP reboot.",
+   "default_severity": "medium",
+   "likely_causes": [
+    "AP reboot",
+    "roam race",
+    "client sleeping through deauth"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "check AP stability"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [
+     6,
+     7,
+     9
+    ],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "SESS-06",
+   "category": "SESS",
+   "name": "Steered away (BSS transition)",
+   "plain": "The network pushes the device to another access point.",
+   "signature": "Reason 12, or BTM action frames.",
+   "detect": "Frequent BTM disconnects for the same client.",
+   "normal_lookalike": "Occasional band/load steering.",
+   "default_severity": "low",
+   "likely_causes": [
+    "band steering too aggressive"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "tune steering"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [
+     12
+    ],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "SESS-07",
+   "category": "SESS",
+   "name": "Disconnected for poor radio conditions",
+   "plain": "The link got too bad and the network dropped the device.",
+   "signature": "Reason 34 or 71.",
+   "detect": "Any.",
+   "normal_lookalike": "",
+   "default_severity": "medium",
+   "likely_causes": [
+    "coverage hole",
+    "interference"
+   ],
+   "confirm_outside_headers": [
+    "RF survey"
+   ],
+   "standard_fix": [
+    "fix coverage"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [
+     34,
+     71
+    ],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "SESS-08",
+   "category": "SESS",
+   "name": "Mass leave burst",
+   "plain": "Many devices disconnect within seconds, pointing to a shared trigger.",
+   "signature": ">= 8 distinct clients send leave/deauth within 10 s.",
+   "detect": "Count distinct clients per 10 s window.",
+   "normal_lookalike": "End of shift.",
+   "default_severity": "medium",
+   "likely_causes": [
+    "controller push",
+    "power event",
+    "shift change"
+   ],
+   "confirm_outside_headers": [
+    "facility and change calendars"
+   ],
+   "standard_fix": [
+    "correlate with events"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [
+     3,
+     8
+    ],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "15 devices (6 laptops, 5 phones, 4 IoT) sent reason 3 within 9 s at start."
+   }
+  },
+  {
+   "id": "SESS-09",
+   "category": "SESS",
+   "name": "Normal leave (not an incident)",
+   "plain": "A device says goodbye on its own: normal behaviour.",
+   "signature": "Deauth/disassoc reason 3 or 8 from the client, no repeat.",
+   "detect": "Record only; never an incident unless part of SESS-01/08.",
+   "normal_lookalike": "",
+   "default_severity": "info",
+   "likely_causes": [],
+   "confirm_outside_headers": [],
+   "standard_fix": [],
+   "owner": "none",
+   "codes": {
+    "reason": [
+     3,
+     8,
+     36
+    ],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "16 reason-3 frames from clients."
+   }
+  },
+  {
+   "id": "SESS-10",
+   "category": "SESS",
+   "name": "Unspecified disconnect",
+   "plain": "Disconnected with no reason given.",
+   "signature": "Reason 1.",
+   "detect": "Cluster by AP/client.",
+   "normal_lookalike": "",
+   "default_severity": "low",
+   "likely_causes": [
+    "vendor-specific"
+   ],
+   "confirm_outside_headers": [
+    "controller log"
+   ],
+   "standard_fix": [],
+   "owner": "network",
+   "codes": {
+    "reason": [
+     1
+    ],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "SESS-11",
+   "category": "SESS",
+   "name": "QoS / session-policy disconnect",
+   "plain": "Disconnected for a QoS, service-provider or access-policy reason.",
+   "signature": "Reasons 10, 11, 13, 25-32, 35, 37-39, 46-51.",
+   "detect": "Any.",
+   "normal_lookalike": "",
+   "default_severity": "low",
+   "likely_causes": [
+    "policy",
+    "QoS admission"
+   ],
+   "confirm_outside_headers": [
+    "controller policy"
+   ],
+   "standard_fix": [],
+   "owner": "network",
+   "codes": {
+    "reason": [
+     10,
+     11,
+     13,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30,
+     31,
+     32,
+     35,
+     37,
+     38,
+     39,
+     46,
+     47,
+     48,
+     49,
+     50,
+     51
+    ],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "SESS-12",
+   "category": "SESS",
+   "name": "Mesh-link events",
+   "plain": "Mesh backhaul peering problems (only on mesh deployments).",
+   "signature": "Reasons 52-68.",
+   "detect": "Any.",
+   "normal_lookalike": "",
+   "default_severity": "medium",
+   "likely_causes": [
+    "mesh link loss"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "check mesh backhaul"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [
+     52,
+     53,
+     54,
+     55,
+     56,
+     57,
+     58,
+     59,
+     60,
+     61,
+     62,
+     63,
+     64,
+     65,
+     66,
+     67,
+     68
+    ],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "ROAM-01",
+   "category": "ROAM",
+   "name": "Normal roam (not an incident)",
+   "plain": "A device moves to a better access point: normal.",
+   "signature": "Leave on AP A then (re)assoc on AP B within ~1 s.",
+   "detect": "Record roam latency only.",
+   "normal_lookalike": "",
+   "default_severity": "info",
+   "likely_causes": [],
+   "confirm_outside_headers": [],
+   "standard_fix": [],
+   "owner": "none",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": "No device changed AP in 30 min."
+   }
+  },
+  {
+   "id": "ROAM-02",
+   "category": "ROAM",
+   "name": "Slow roam",
+   "plain": "Moving between access points takes too long and breaks connections.",
+   "signature": "Roam gap > 150 ms (voice) / > 1 s (data).",
+   "detect": "Median roam gap per SSID above threshold.",
+   "normal_lookalike": "",
+   "default_severity": "medium",
+   "likely_causes": [
+    "no FT/OKC",
+    "full 802.1X on every roam"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "enable 802.11r/OKC"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "ROAM-03",
+   "category": "ROAM",
+   "name": "Sticky client",
+   "plain": "A device stays on a far, weak access point instead of moving to a closer one.",
+   "signature": "RSSI of client at its AP falling, retries rising, while a stronger AP is heard by the same sensor.",
+   "detect": "Signal < -75 dBm for 60 s with a >= 8 dB better AP available.",
+   "normal_lookalike": "Stationary device with a steady weak link.",
+   "default_severity": "medium",
+   "likely_causes": [
+    "client roam threshold too low"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "set min RSSI / enable 11k/v"
+   ],
+   "owner": "device",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "partial",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "ROAM-04",
+   "category": "ROAM",
+   "name": "Ping-pong roaming",
+   "plain": "A device keeps bouncing between two access points.",
+   "signature": ">= 4 roams between the same two APs in 5 min.",
+   "detect": "Count A<->B transitions per client.",
+   "normal_lookalike": "",
+   "default_severity": "medium",
+   "likely_causes": [
+    "overlapping cells with equal signal"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "tune TX power / roam thresholds"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "RF-01",
+   "category": "RF",
+   "name": "Missing acknowledgements / high retries",
+   "plain": "Many messages are not acknowledged and have to be sent again.",
+   "signature": "Retry flag share per transmitter/frame type; retransmit of same seq.",
+   "detect": "Retry share > 20% (>= 30 frames) per transmitter or frame type.",
+   "normal_lookalike": "Short burst during a roam.",
+   "default_severity": "medium",
+   "likely_causes": [
+    "receiver gone (scanning client)",
+    "interference",
+    "hidden node"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "fix cause (often DISC-03)"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "31.3% of probe responses retried (54,484); 60 other retries in 1.1 M frames."
+   }
+  },
+  {
+   "id": "RF-02",
+   "category": "RF",
+   "name": "Channel congestion",
+   "plain": "The radio lane is too busy.",
+   "signature": "High airtime use from frame durations and rates; many BSS per channel.",
+   "detect": "Estimated airtime > 50% for 60 s.",
+   "normal_lookalike": "",
+   "default_severity": "high",
+   "likely_causes": [
+    "too many clients/SSIDs",
+    "low data rates"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "re-plan channels, raise rates"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "partial",
+   "dataset": {
+    "seen": false,
+    "evidence": "Airtime estimate low except beacon overhead (see RF-03)."
+   }
+  },
+  {
+   "id": "RF-03",
+   "category": "RF",
+   "name": "Beacon overhead",
+   "plain": "Access point adverts use a big share of the air before any useful work.",
+   "signature": "Sum of beacon airtime per channel.",
+   "detect": "> 10% at stated rate.",
+   "normal_lookalike": "",
+   "default_severity": "medium",
+   "likely_causes": [
+    "many SSIDs per AP",
+    "low basic rate"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "fewer SSIDs, higher basic rate"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "10-19% per channel at the stated 1 Mbit/s; 1.7-3% if 6 Mbit/s."
+   }
+  },
+  {
+   "id": "RF-04",
+   "category": "RF",
+   "name": "Basic rate too low / legacy rate",
+   "plain": "Management frames are sent at a very slow rate, wasting air.",
+   "signature": "Beacon/mgmt rate at lowest rate of the band (or invalid for band).",
+   "detect": "Any beacon rate < 12 Mbit/s on 5 GHz.",
+   "normal_lookalike": "",
+   "default_severity": "low",
+   "likely_causes": [
+    "default rate set"
+   ],
+   "confirm_outside_headers": [
+    "WLAN basic rate config"
+   ],
+   "standard_fix": [
+    "set minimum basic rate 12-24 Mbit/s"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "All 914,057 beacons at 1 Mbit/s on 5 GHz."
+   }
+  },
+  {
+   "id": "RF-05",
+   "category": "RF",
+   "name": "Weak client signal",
+   "plain": "Devices are too far from the access point.",
+   "signature": "Client RSSI at sensor near AP < -80 dBm (needs sensor near AP).",
+   "detect": "Per-client RSSI trend.",
+   "normal_lookalike": "",
+   "default_severity": "low",
+   "likely_causes": [
+    "coverage hole"
+   ],
+   "confirm_outside_headers": [
+    "survey"
+   ],
+   "standard_fix": [
+    "add AP / move device"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "partial",
+   "dataset": {
+    "seen": null,
+    "evidence": "Clients heard at -80..-89 dBm but sensors are not co-located with APs, so this is not a valid client-signal measure."
+   }
+  },
+  {
+   "id": "RF-06",
+   "category": "RF",
+   "name": "Co-channel overlap",
+   "plain": "Neighbouring access points share the same lane and slow each other down.",
+   "signature": "Several APs on one channel heard at similar strength by one sensor.",
+   "detect": ">= 3 APs within 6 dB on one channel.",
+   "normal_lookalike": "",
+   "default_severity": "low",
+   "likely_causes": [
+    "channel plan"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "re-plan channels / TX power"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": null,
+    "evidence": "Up to 5 APs on one channel; physical distances unknown (no map)."
+   }
+  },
+  {
+   "id": "RF-07",
+   "category": "RF",
+   "name": "High noise floor",
+   "plain": "Background radio noise makes everything slower.",
+   "signature": "radiotap noise > -85 dBm sustained.",
+   "detect": "Median noise > -85 dBm over 60 s.",
+   "normal_lookalike": "",
+   "default_severity": "medium",
+   "likely_causes": [
+    "non-Wi-Fi interference"
+   ],
+   "confirm_outside_headers": [
+    "spectrum analysis"
+   ],
+   "standard_fix": [
+    "remove interferer"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "CLIENT-01",
+   "category": "CLIENT",
+   "name": "Power-save misbehaviour",
+   "plain": "Sleepy devices miss messages and drop.",
+   "signature": "PS bit toggling rapidly; group-key timeouts.",
+   "detect": "> 10 PS toggles/s per client.",
+   "normal_lookalike": "",
+   "default_severity": "low",
+   "likely_causes": [
+    "driver"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "driver update / disable aggressive PS"
+   ],
+   "owner": "device",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "CLIENT-02",
+   "category": "CLIENT",
+   "name": "Null-data keepalive storm",
+   "plain": "A device sends too many 'still here' frames.",
+   "signature": "Null/QoS-Null frames per client per second.",
+   "detect": "> 5/s sustained.",
+   "normal_lookalike": "",
+   "default_severity": "low",
+   "likely_causes": [
+    "driver"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "driver update"
+   ],
+   "owner": "device",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": "QoS Null frames present at low rate from IoT."
+   }
+  },
+  {
+   "id": "SEC-01",
+   "category": "SEC",
+   "name": "Deauthentication flood / spoofed deauth",
+   "plain": "Someone may be forcing devices off the network.",
+   "signature": "Many deauths (often broadcast) with sequence numbers inconsistent with the AP's own counter.",
+   "detect": "> 20 deauth/s or seq jumps vs AP's frames.",
+   "normal_lookalike": "Legitimate controller mass-deauth during change.",
+   "default_severity": "high",
+   "likely_causes": [
+    "attack",
+    "rogue device"
+   ],
+   "confirm_outside_headers": [
+    "WIPS"
+   ],
+   "standard_fix": [
+    "enable PMF (802.11w)",
+    "locate source"
+   ],
+   "owner": "security",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": "Reason-2 deauths carry the AP's own increasing sequence numbers at 10-30 s per client: sent by the AP itself (SESS-02), not a spoofed flood."
+   }
+  },
+  {
+   "id": "SEC-02",
+   "category": "SEC",
+   "name": "Rogue / evil-twin AP",
+   "plain": "An unknown access point advertises the company network.",
+   "signature": "Beacon with corporate SSID from a BSSID not in the inventory / other vendor OUI.",
+   "detect": "Any unknown BSSID with a corporate SSID.",
+   "normal_lookalike": "New AP not yet in inventory.",
+   "default_severity": "high",
+   "likely_causes": [
+    "rogue AP"
+   ],
+   "confirm_outside_headers": [
+    "inventory"
+   ],
+   "standard_fix": [
+    "locate and remove"
+   ],
+   "owner": "security",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": "All 53 BSSIDs share one vendor OUI."
+   }
+  },
+  {
+   "id": "SEC-03",
+   "category": "SEC",
+   "name": "Protected management frames not enforced",
+   "plain": "Management frames are not protected, making spoofed disconnects possible.",
+   "signature": "RSN capabilities MFPR=0 on corporate SSID.",
+   "detect": "Beacon RSN MFPR bit.",
+   "normal_lookalike": "",
+   "default_severity": "low",
+   "likely_causes": [
+    "config"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "require PMF where clients support it"
+   ],
+   "owner": "security",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": null,
+    "evidence": "Not assessed: converter does not extract RSN capability bits yet."
+   }
+  },
+  {
+   "id": "INFRA-01",
+   "category": "INFRA",
+   "name": "Central authentication service outage",
+   "plain": "The same login failure happens on many access points at once, so the cause is a shared service behind them.",
+   "signature": "EAP-01/EAP-03 on >= 3 APs or >= 2 channels within 2 min, while another SSID on the same radios is healthy.",
+   "detect": "Root-incident rule over EAP incidents + control comparison.",
+   "normal_lookalike": "",
+   "default_severity": "critical",
+   "likely_causes": [
+    "RADIUS/AAA outage",
+    "controller-AAA path failure"
+   ],
+   "confirm_outside_headers": [
+    "RADIUS health",
+    "controller AAA status"
+   ],
+   "standard_fix": [
+    "restore AAA service"
+   ],
+   "owner": "identity/AAA",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "EAP-01 on 26 APs, 8 channels, 8 sensors; NET-T on same radios: 31 handshakes, 0 failures. Streaming detector would fire at 47.5 s."
+   }
+  },
+  {
+   "id": "INFRA-02",
+   "category": "INFRA",
+   "name": "AP reboot",
+   "plain": "An access point restarted.",
+   "signature": "Beacons stop then resume with TSF reset near zero.",
+   "detect": "Beacon gap > 5 s then TSF < previous.",
+   "normal_lookalike": "",
+   "default_severity": "medium",
+   "likely_causes": [
+    "power",
+    "crash",
+    "firmware"
+   ],
+   "confirm_outside_headers": [
+    "AP uptime"
+   ],
+   "standard_fix": [
+    "check PoE/firmware"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "INFRA-03",
+   "category": "INFRA",
+   "name": "Controller-wide behaviour change",
+   "plain": "Many APs change behaviour at the same moment (config push).",
+   "signature": "Same new pattern (e.g. new reason code) starts on many APs within a short window.",
+   "detect": "New reason/status code on >= 3 APs within 60 s.",
+   "normal_lookalike": "",
+   "default_severity": "medium",
+   "likely_causes": [
+    "config push"
+   ],
+   "confirm_outside_headers": [
+    "change log"
+   ],
+   "standard_fix": [
+    "review change"
+   ],
+   "owner": "network",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": "SESS-02 onset is a rolling 15 s-per-client wave (402-641 s), not simultaneous."
+   }
+  },
+  {
+   "id": "SENS-01",
+   "category": "SENS",
+   "name": "Sensor deaf / silent",
+   "plain": "A sensor stops hearing anything.",
+   "signature": "No beacons from any AP for > 2 s.",
+   "detect": "Gap > 2 s in all beacons for a sensor.",
+   "normal_lookalike": "",
+   "default_severity": "high",
+   "likely_causes": [
+    "sensor down",
+    "channel change"
+   ],
+   "confirm_outside_headers": [
+    "sensor heartbeat"
+   ],
+   "standard_fix": [
+    "restart sensor"
+   ],
+   "owner": "platform",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": "Longest beacon gap 0.41 s on any sensor."
+   }
+  },
+  {
+   "id": "SENS-02",
+   "category": "SENS",
+   "name": "Sensor clock offset",
+   "plain": "Sensors' clocks disagree, so matching events across sensors needs tolerance.",
+   "signature": "Same scripted/periodic event lines up on per-sensor relative time but not on wall-clock time.",
+   "detect": "Estimate offset from shared BSSID TSF when available.",
+   "normal_lookalike": "",
+   "default_severity": "low",
+   "likely_causes": [
+    "no NTP/PTP"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "sync sensor clocks"
+   ],
+   "owner": "platform",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "Start epochs differ by up to 2.3 s; joins sit on an exact 2 s grid in per-sensor time only. Cannot tell offset from staggered start (no shared BSSID)."
+   }
+  },
+  {
+   "id": "SENS-03",
+   "category": "SENS",
+   "name": "Partial capture window",
+   "plain": "The analysed data covers only part of the recording.",
+   "signature": "Converted window << capture length.",
+   "detect": "Compare window to capture length.",
+   "normal_lookalike": "",
+   "default_severity": "info",
+   "likely_causes": [
+    "conversion limit"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "convert full capture"
+   ],
+   "owner": "platform",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "Old JSON: 50 s of 1,802 s (2.8%)."
+   }
+  },
+  {
+   "id": "SENS-04",
+   "category": "SENS",
+   "name": "Physically impossible radio values",
+   "plain": "The capture contains values real radios cannot produce.",
+   "signature": "e.g. 1 Mbit/s on 5 GHz, constant RSSI.",
+   "detect": "Rate not valid for band; RSSI variance 0 across > 100 frames.",
+   "normal_lookalike": "",
+   "default_severity": "info",
+   "likely_causes": [
+    "emulated capture",
+    "sensor driver bug"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "treat airtime maths with care"
+   ],
+   "owner": "platform",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "1 Mbit/s beacons on 5 GHz; RSSI constant on 53/53 BSSIDs."
+   }
+  },
+  {
+   "id": "SENS-05",
+   "category": "SENS",
+   "name": "Uplink not heard (visibility asymmetry)",
+   "plain": "Sensors hear access points far better than devices, so many device frames are missing.",
+   "signature": "Ratio of AP-sent to client-sent frames in handshakes.",
+   "detect": "Track per-client visibility; lower confidence of client-side verdicts.",
+   "normal_lookalike": "",
+   "default_severity": "info",
+   "likely_causes": [
+    "sensor placement"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [
+    "place sensors nearer clients"
+   ],
+   "owner": "platform",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "173,964 probe responses vs 6,024 probe requests; M2/M4 heard for 4 of 24 IoT devices."
+   }
+  },
+  {
+   "id": "SENS-06",
+   "category": "SENS",
+   "name": "Truncated frames",
+   "plain": "Frames are cut to headers (by design); lengths must use the on-air size.",
+   "signature": "caplen < frame length.",
+   "detect": "Informational.",
+   "normal_lookalike": "",
+   "default_severity": "info",
+   "likely_causes": [
+    "header-only capture policy"
+   ],
+   "confirm_outside_headers": [],
+   "standard_fix": [],
+   "owner": "platform",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": true,
+    "evidence": "Data frames truncated (e.g. 49 of 137 bytes)."
+   }
+  },
+  {
+   "id": "OTHER-CODE",
+   "category": "OTHER",
+   "name": "Unknown or unmapped code",
+   "plain": "A status/reason/EAP code arrived that the catalog does not map (reserved or vendor-specific).",
+   "signature": "Code value not in ieee_codes.json or not mapped to an entry.",
+   "detect": "Every such frame -> unknown_events.jsonl.",
+   "normal_lookalike": "",
+   "default_severity": "unknown",
+   "likely_causes": [],
+   "confirm_outside_headers": [],
+   "standard_fix": [],
+   "owner": "discovery-agent",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "OTHER-SEQ",
+   "category": "OTHER",
+   "name": "Unexpected sequence",
+   "plain": "Frames arrived in an order no known pattern explains.",
+   "signature": "Episode state machine hits an undefined transition.",
+   "detect": "Every such transition -> unknown_events.jsonl.",
+   "normal_lookalike": "",
+   "default_severity": "unknown",
+   "likely_causes": [],
+   "confirm_outside_headers": [],
+   "standard_fix": [],
+   "owner": "discovery-agent",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  },
+  {
+   "id": "OTHER-STAT",
+   "category": "OTHER",
+   "name": "Statistical anomaly",
+   "plain": "A metric moved far from normal with no known explanation.",
+   "signature": "Per-metric z-score > 4 vs rolling baseline, no catalog detector fired.",
+   "detect": "Every such spike -> unknown_events.jsonl.",
+   "normal_lookalike": "",
+   "default_severity": "unknown",
+   "likely_causes": [],
+   "confirm_outside_headers": [],
+   "standard_fix": [],
+   "owner": "discovery-agent",
+   "codes": {
+    "reason": [],
+    "status": []
+   },
+   "header_visibility": "full",
+   "dataset": {
+    "seen": false,
+    "evidence": ""
+   }
+  }
+ ],
+ "code_index": {
+  "reason": {
+   "1": {
+    "text": "Unspecified reason",
+    "entry": "SESS-10"
+   },
+   "2": {
+    "text": "Previous authentication no longer valid",
+    "entry": "SESS-02"
+   },
+   "3": {
+    "text": "Deauthenticated because sending STA is leaving (or has left) the BSS",
+    "entry": "SESS-08"
+   },
+   "4": {
+    "text": "Disassociated due to inactivity",
+    "entry": "SESS-03"
+   },
+   "5": {
+    "text": "Disassociated because AP is unable to handle all currently associated STAs",
+    "entry": "SESS-04"
+   },
+   "6": {
+    "text": "Class 2 frame received from nonauthenticated STA",
+    "entry": "SESS-05"
+   },
+   "7": {
+    "text": "Class 3 frame received from nonassociated STA",
+    "entry": "SESS-05"
+   },
+   "8": {
+    "text": "Disassociated because sending STA is leaving (or has left) BSS",
+    "entry": "SESS-08"
+   },
+   "9": {
+    "text": "STA requesting (re)association is not authenticated with responding STA",
+    "entry": "SESS-05"
+   },
+   "10": {
+    "text": "Disassociated because the information in the Power Capability element is unacceptable",
+    "entry": "SESS-11"
+   },
+   "11": {
+    "text": "Disassociated because the information in the Supported Channels element is unacceptable",
+    "entry": "SESS-11"
+   },
+   "12": {
+    "text": "Disassociated due to BSS transition management",
+    "entry": "SESS-06"
+   },
+   "13": {
+    "text": "Invalid information element, i.e., an information element defined in this standard for which the content does not meet the specifications in Clause 9",
+    "entry": "SESS-11"
+   },
+   "14": {
+    "text": "Message integrity code (MIC) failure",
+    "entry": "KEY-03"
+   },
+   "15": {
+    "text": "4-way handshake timeout",
+    "entry": "KEY-01"
+   },
+   "16": {
+    "text": "Group key handshake timeout",
+    "entry": "KEY-04"
+   },
+   "17": {
+    "text": "Element in 4-way handshake different from (Re)Association Request/Probe Response/Beacon frame",
+    "entry": "KEY-05"
+   },
+   "18": {
+    "text": "Invalid group cipher",
+    "entry": "KEY-05"
+   },
+   "19": {
+    "text": "Invalid pairwise cipher",
+    "entry": "KEY-05"
+   },
+   "20": {
+    "text": "Invalid AKMP",
+    "entry": "KEY-05"
+   },
+   "21": {
+    "text": "Unsupported RSNE version",
+    "entry": "KEY-05"
+   },
+   "22": {
+    "text": "Invalid RSNE capabilities",
+    "entry": "KEY-05"
+   },
+   "23": {
+    "text": "IEEE 802.1X authentication failed",
+    "entry": "EAP-04"
+   },
+   "24": {
+    "text": "Cipher suite rejected because of the security policy",
+    "entry": "KEY-05"
+   },
+   "25": {
+    "text": "TDLS direct-link teardown due to TDLS peer STA unreachable via the TDLS direct link",
+    "entry": "SESS-11"
+   },
+   "26": {
+    "text": "TDLS direct-link teardown for unspecified reason",
+    "entry": "SESS-11"
+   },
+   "27": {
+    "text": "Disassociated because session terminated by SSP request",
+    "entry": "SESS-11"
+   },
+   "28": {
+    "text": "Disassociated because of lack of SSP roaming agreement",
+    "entry": "SESS-11"
+   },
+   "29": {
+    "text": "Requested service rejected because of SSP cipher suite or AKM requirement",
+    "entry": "SESS-11"
+   },
+   "30": {
+    "text": "Requested service not authorized in this location",
+    "entry": "SESS-11"
+   },
+   "31": {
+    "text": "TS deleted because QoS AP lacks sufficient bandwidth for this QoS STA due to a change in BSS service characteristics or operational mode",
+    "entry": "SESS-11"
+   },
+   "32": {
+    "text": "Disassociated for unspecified, QoS-related reason",
+    "entry": "SESS-11"
+   },
+   "33": {
+    "text": "Disassociated because QoS AP lacks sufficient bandwidth for this QoS STA",
+    "entry": "SESS-04"
+   },
+   "34": {
+    "text": "Disassociated because excessive number of frames need to be acknowledged, but are not acknowledged due to AP transmissions and/or poor channel conditions",
+    "entry": "SESS-07"
+   },
+   "35": {
+    "text": "Disassociated because STA is transmitting outside the limits of its TXOPs",
+    "entry": "SESS-11"
+   },
+   "36": {
+    "text": "Requested from peer STA as the STA is leaving the BSS (or resetting)",
+    "entry": "SESS-09"
+   },
+   "37": {
+    "text": "Requesting STA is no longer using the stream or session",
+    "entry": "SESS-11"
+   },
+   "38": {
+    "text": "Requesting STA received frames using a mechanism for which a setup has not been completed",
+    "entry": "SESS-11"
+   },
+   "39": {
+    "text": "Requested from peer STA due to timeout",
+    "entry": "SESS-11"
+   },
+   "46": {
+    "text": "Disassociated because authorized access limit reached",
+    "entry": "SESS-11"
+   },
+   "47": {
+    "text": "Disassociated due to external service requirements",
+    "entry": "SESS-11"
+   },
+   "48": {
+    "text": "Invalid FT Action frame count",
+    "entry": "SESS-11"
+   },
+   "49": {
+    "text": "Invalid pairwise master key identifier (PMKID)",
+    "entry": "SESS-11"
+   },
+   "50": {
+    "text": "Invalid MDE",
+    "entry": "SESS-11"
+   },
+   "51": {
+    "text": "Invalid FTE",
+    "entry": "SESS-11"
+   },
+   "52": {
+    "text": "Mesh peering canceled for unknown reasons",
+    "entry": "SESS-12"
+   },
+   "53": {
+    "text": "The mesh STA has reached the supported maximum number of peer mesh STAs",
+    "entry": "SESS-12"
+   },
+   "54": {
+    "text": "The received information violates the Mesh Configuration policy configured in the mesh STA profile",
+    "entry": "SESS-12"
+   },
+   "55": {
+    "text": "The mesh STA has received a Mesh Peering Close message requesting to close the mesh peering",
+    "entry": "SESS-12"
+   },
+   "56": {
+    "text": "The mesh STA has re-sent dot11MeshMaxRetries Mesh Peering Open messages, without receiving a Mesh Peering Confirm message",
+    "entry": "SESS-12"
+   },
+   "57": {
+    "text": "The confirmTimer for the mesh peering instance times out",
+    "entry": "SESS-12"
+   },
+   "58": {
+    "text": "The mesh STA fails to unwrap the GTK or the values in the wrapped contents do not match",
+    "entry": "SESS-12"
+   },
+   "59": {
+    "text": "The mesh STA receives inconsistent information about the mesh parameters between Mesh Peering Management frames",
+    "entry": "SESS-12"
+   },
+   "60": {
+    "text": "The mesh STA fails the authenticated mesh peering exchange because due to failure in selecting either the pairwise ciphersuite or group ciphersuite",
+    "entry": "SESS-12"
+   },
+   "61": {
+    "text": "The mesh STA does not have proxy information for this external destination",
+    "entry": "SESS-12"
+   },
+   "62": {
+    "text": "The mesh STA does not have forwarding information for this destination",
+    "entry": "SESS-12"
+   },
+   "63": {
+    "text": "The mesh STA determines that the link to the next hop of an active path in its forwarding information is no longer usable",
+    "entry": "SESS-12"
+   },
+   "64": {
+    "text": "The Deauthentication frame was sent because the MAC address of the STA already exists in the mesh BSS. See 11.3.3 (Additional mechanisms for an AP collocated with a mesh STA)",
+    "entry": "SESS-12"
+   },
+   "65": {
+    "text": "The mesh STA performs channel switch to meet regulatory requirements",
+    "entry": "SESS-12"
+   },
+   "66": {
+    "text": "The mesh STA performs channel switch with unspecified reason",
+    "entry": "SESS-12"
+   },
+   "67": {
+    "text": "Transmission link establishment in alternative channel failed",
+    "entry": "SESS-12"
+   },
+   "68": {
+    "text": "The alternative channel is occupied",
+    "entry": "SESS-12"
+   },
+   "71": {
+    "text": "Disassociated due to poor RSSI",
+    "entry": "SESS-07"
+   }
+  },
+  "status": {
+   "0": {
+    "text": "Successful",
+    "entry": "OK"
+   },
+   "1": {
+    "text": "Unspecified failure",
+    "entry": "AUTH-01"
+   },
+   "2": {
+    "text": "TDLS wakeup schedule rejected but alternative schedule provided",
+    "entry": "ASSOC-08"
+   },
+   "3": {
+    "text": "TDLS wakeup schedule rejected",
+    "entry": "ASSOC-08"
+   },
+   "4": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "5": {
+    "text": "Security disabled",
+    "entry": "ASSOC-10"
+   },
+   "6": {
+    "text": "Unacceptable lifetime",
+    "entry": "ASSOC-08"
+   },
+   "7": {
+    "text": "Not in same BSS",
+    "entry": "ASSOC-08"
+   },
+   "8": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "9": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "10": {
+    "text": "Cannot support all requested capabilities in the Capability Information field",
+    "entry": "ASSOC-02"
+   },
+   "11": {
+    "text": "Reassociation denied due to inability to confirm that association exists",
+    "entry": "ASSOC-06"
+   },
+   "12": {
+    "text": "Association denied due to reason outside the scope of this standard",
+    "entry": "ASSOC-05"
+   },
+   "13": {
+    "text": "Responding STA does not support the specified authentication algorithm",
+    "entry": "AUTH-01"
+   },
+   "14": {
+    "text": "Received an Authentication frame with authentication transaction sequence number out of expected sequence",
+    "entry": "AUTH-01"
+   },
+   "15": {
+    "text": "Authentication rejected because of challenge failure",
+    "entry": "AUTH-01"
+   },
+   "16": {
+    "text": "Authentication rejected due to timeout waiting for next frame in sequence",
+    "entry": "AUTH-01"
+   },
+   "17": {
+    "text": "Association denied because AP is unable to handle additional associated STAs",
+    "entry": "ASSOC-01"
+   },
+   "18": {
+    "text": "Association denied due to requesting STA not supporting all of the data rates in the BSSBasicRateSet parameter, the Basic HT-MCS Set field of the HT Operation parameter, or the Basic VHT-MCS and NSS Set field in the VHT Operation parameter",
+    "entry": "ASSOC-02"
+   },
+   "19": {
+    "text": "Association denied due to requesting STA not supporting the short preamble option",
+    "entry": "ASSOC-02"
+   },
+   "20": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "21": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "22": {
+    "text": "Association request rejected because spectrum management capability is required",
+    "entry": "ASSOC-02"
+   },
+   "23": {
+    "text": "Association request rejected because the information in the Power Capability element is unacceptable",
+    "entry": "ASSOC-02"
+   },
+   "24": {
+    "text": "Association request rejected because the information in the Supported Channels element is unacceptable",
+    "entry": "ASSOC-02"
+   },
+   "25": {
+    "text": "Association denied due to requesting STA not supporting short slot time",
+    "entry": "ASSOC-02"
+   },
+   "26": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "27": {
+    "text": "Association denied because the requesting STA does not support HT features",
+    "entry": "ASSOC-02"
+   },
+   "28": {
+    "text": "R0KH unreachable",
+    "entry": "AUTH-04"
+   },
+   "29": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "30": {
+    "text": "Association request rejected temporarily; try again later",
+    "entry": "ASSOC-03"
+   },
+   "31": {
+    "text": "Robust management frame policy violation",
+    "entry": "ASSOC-03"
+   },
+   "32": {
+    "text": "Unspecified, QoS-related failure",
+    "entry": "ASSOC-08"
+   },
+   "33": {
+    "text": "Association denied because QoS AP or PCP has insufficient bandwidth to handle another QoS STA",
+    "entry": "ASSOC-01"
+   },
+   "34": {
+    "text": "Association denied due to excessive frame loss rates and/ or poor conditions on current operating channel",
+    "entry": "ASSOC-05"
+   },
+   "35": {
+    "text": "Association (with QoS BSS) denied because the requesting STA does not support the QoS facility",
+    "entry": "ASSOC-02"
+   },
+   "36": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "37": {
+    "text": "The request has been declined",
+    "entry": "ASSOC-08"
+   },
+   "38": {
+    "text": "The request has not been successful as one or more parameters have invalid values",
+    "entry": "ASSOC-08"
+   },
+   "39": {
+    "text": "The allocation or TS has not been created because the request cannot be honored; however, a suggested TSPEC/DMG TSPEC is provided so that the initiating STA can attempt to set another allocation or TS with the suggested changes to the TSPEC/DMG TSPEC",
+    "entry": "ASSOC-08"
+   },
+   "40": {
+    "text": "Invalid element, i.e., an element defined in this standard for which the content does not meet the specifications in Clause 9 (Frame formats)",
+    "entry": "ASSOC-04"
+   },
+   "41": {
+    "text": "Invalid group cipher",
+    "entry": "ASSOC-04"
+   },
+   "42": {
+    "text": "Invalid pairwise cipher",
+    "entry": "ASSOC-04"
+   },
+   "43": {
+    "text": "Invalid AKMP",
+    "entry": "ASSOC-04"
+   },
+   "44": {
+    "text": "Unsupported RSNE version",
+    "entry": "ASSOC-04"
+   },
+   "45": {
+    "text": "Invalid RSNE capabilities",
+    "entry": "ASSOC-04"
+   },
+   "46": {
+    "text": "Cipher suite rejected because of security policy",
+    "entry": "ASSOC-04"
+   },
+   "47": {
+    "text": "The TS or allocation has not been created; however, the HC or PCP might be capable of creating a TS or allocation, in response to a request, after the time indicated in the TS Delay element",
+    "entry": "ASSOC-08"
+   },
+   "48": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "49": {
+    "text": "The Destination STA is not present within this BSS",
+    "entry": "ASSOC-08"
+   },
+   "50": {
+    "text": "The Destination STA is not a QoS STA",
+    "entry": "ASSOC-08"
+   },
+   "51": {
+    "text": "Association denied because the listen interval is too large",
+    "entry": "ASSOC-02"
+   },
+   "52": {
+    "text": "Invalid FT Action frame count",
+    "entry": "AUTH-04"
+   },
+   "53": {
+    "text": "Invalid pairwise master key identifier (PMKID)",
+    "entry": "AUTH-04"
+   },
+   "54": {
+    "text": "Invalid MDE",
+    "entry": "AUTH-04"
+   },
+   "55": {
+    "text": "Invalid FTE",
+    "entry": "AUTH-04"
+   },
+   "56": {
+    "text": "Requested TCLAS processing is not supported by the AP or PCP",
+    "entry": "ASSOC-08"
+   },
+   "57": {
+    "text": "The AP or PCP has insufficient TCLAS processing resources to satisfy the request",
+    "entry": "ASSOC-08"
+   },
+   "58": {
+    "text": "The TS has not been created because the request cannot be honored; however, the HC or PCP suggests that the STA transition to a different BSS to set up the TS",
+    "entry": "ASSOC-08"
+   },
+   "59": {
+    "text": "GAS advertisement protocol not supported",
+    "entry": "DISC-09"
+   },
+   "60": {
+    "text": "No outstanding GAS request",
+    "entry": "DISC-09"
+   },
+   "61": {
+    "text": "GAS response not received from the advertisement server",
+    "entry": "DISC-09"
+   },
+   "62": {
+    "text": "STA timed out waiting for GAS query response",
+    "entry": "DISC-09"
+   },
+   "63": {
+    "text": "GAS response is larger than query response length limit",
+    "entry": "DISC-09"
+   },
+   "64": {
+    "text": "Request refused because home network does not support request",
+    "entry": "DISC-09"
+   },
+   "65": {
+    "text": "Advertisement server in the network is not currently reachable",
+    "entry": "DISC-09"
+   },
+   "66": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "67": {
+    "text": "Request refused due to permissions received via SSPN interface",
+    "entry": "DISC-09"
+   },
+   "68": {
+    "text": "Request refused because the AP or PCP does not support unauthenticated access",
+    "entry": "DISC-09"
+   },
+   "69": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "70": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "71": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "72": {
+    "text": "Invalid contents of RSNE, other than unsupported RSNE version or invalid RSNE capabilities, AKMP or pairwise cipher",
+    "entry": "ASSOC-04"
+   },
+   "73": {
+    "text": "U-APSD coexistence is not supported",
+    "entry": "ASSOC-10"
+   },
+   "74": {
+    "text": "Requested U-APSD coexistence mode is not supported",
+    "entry": "ASSOC-10"
+   },
+   "75": {
+    "text": "Requested interval/duration value cannot be supported with U-APSD coexistence",
+    "entry": "ASSOC-10"
+   },
+   "76": {
+    "text": "Authentication is rejected because an anti-clogging token is required",
+    "entry": "AUTH-03"
+   },
+   "77": {
+    "text": "Authentication is rejected because the offered finite cyclic group is not supported",
+    "entry": "AUTH-03"
+   },
+   "78": {
+    "text": "The TBTT adjustment request has not been successful because the STA could not find an alternative TBTT",
+    "entry": "ASSOC-10"
+   },
+   "79": {
+    "text": "Transmission failure",
+    "entry": "ASSOC-10"
+   },
+   "80": {
+    "text": "Requested TCLAS not supported",
+    "entry": "ASSOC-08"
+   },
+   "81": {
+    "text": "TCLAS resources exhausted",
+    "entry": "ASSOC-08"
+   },
+   "82": {
+    "text": "Rejected with suggested BSS transition",
+    "entry": "ASSOC-10"
+   },
+   "83": {
+    "text": "Reject with recommended schedule",
+    "entry": "ASSOC-08"
+   },
+   "84": {
+    "text": "Reject because no wakeup schedule specified",
+    "entry": "ASSOC-08"
+   },
+   "85": {
+    "text": "Success, the destination STA is in power save mode",
+    "entry": "ASSOC-10"
+   },
+   "86": {
+    "text": "FST pending, in process of admitting FST session",
+    "entry": "ASSOC-10"
+   },
+   "87": {
+    "text": "Performing FST now",
+    "entry": "ASSOC-10"
+   },
+   "88": {
+    "text": "FST pending, gap(s) in block ack window",
+    "entry": "ASSOC-10"
+   },
+   "89": {
+    "text": "Reject because of U-PID setting",
+    "entry": "ASSOC-10"
+   },
+   "90": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "91": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "92": {
+    "text": "(Re)Association refused for some external reason",
+    "entry": "ASSOC-05"
+   },
+   "93": {
+    "text": "(Re)Association refused because of memory limits at the AP",
+    "entry": "ASSOC-01"
+   },
+   "94": {
+    "text": "(Re)Association refused because emergency services are not supported at the AP",
+    "entry": "ASSOC-10"
+   },
+   "95": {
+    "text": "GAS query response not yet received",
+    "entry": "DISC-09"
+   },
+   "96": {
+    "text": "Reject since the request is for transition to a frequency band subject to DSE procedures and FST Initiator is a dependent STA",
+    "entry": "ASSOC-10"
+   },
+   "97": {
+    "text": "Requested TCLAS processing has been terminated by the AP",
+    "entry": "ASSOC-08"
+   },
+   "98": {
+    "text": "The TS schedule conflicts with an existing schedule; an alternative schedule is provided",
+    "entry": "ASSOC-08"
+   },
+   "99": {
+    "text": "The association has been denied; however, one or more Multi-band elements are included that can be used by the receiving STA to join the BSS",
+    "entry": "ASSOC-10"
+   },
+   "100": {
+    "text": "The request failed due to a reservation conflict",
+    "entry": "ASSOC-08"
+   },
+   "101": {
+    "text": "The request failed due to exceeded MAF limit",
+    "entry": "ASSOC-08"
+   },
+   "102": {
+    "text": "The request failed due to exceeded MCCA track limit",
+    "entry": "ASSOC-08"
+   },
+   "103": {
+    "text": "Association denied because the information in the Spectrum Management field is unacceptable",
+    "entry": "ASSOC-02"
+   },
+   "104": {
+    "text": "Association denied because the requesting STA does not support VHT features",
+    "entry": "ASSOC-02"
+   },
+   "105": {
+    "text": "Enablement denied",
+    "entry": "ASSOC-10"
+   },
+   "106": {
+    "text": "Enablement denied due to restriction from an authorized GDB",
+    "entry": "ASSOC-10"
+   },
+   "107": {
+    "text": "Authorization deenabled",
+    "entry": "ASSOC-10"
+   },
+   "108": {
+    "text": "Re(association) refused or disassociated because energy limited operation is not supported at the AP",
+    "entry": "ASSOC-10"
+   },
+   "109": {
+    "text": "BlockAck negotiation refused because, due to buffer constraints and other unspecified reasons, the recipient prefers to generate only NDP BlockAck frames",
+    "entry": "ASSOC-10"
+   },
+   "110": {
+    "text": "Association denied/disassociated because the suggested value for max away duration is unacceptable",
+    "entry": "ASSOC-10"
+   },
+   "111": {
+    "text": "Re(association) refused or disassociated because flow control operation is not supported by the non-AP STA",
+    "entry": "ASSOC-10"
+   },
+   "112": {
+    "text": "Authentication rejected due to FILS authentication failure",
+    "entry": "AUTH-06"
+   },
+   "113": {
+    "text": "Authentication rejected due to unknown Authentication Server",
+    "entry": "AUTH-06"
+   },
+   "114": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "115": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "116": {
+    "text": "Request denied because the allocation of notification period is failed",
+    "entry": "ASSOC-08"
+   },
+   "117": {
+    "text": "Request denied because the request of channel splitting is failed",
+    "entry": "ASSOC-08"
+   },
+   "118": {
+    "text": "Request denied because the allocation request is failed",
+    "entry": "ASSOC-08"
+   },
+   "119": {
+    "text": "Association denied because the requesting STA does not support CMMG features",
+    "entry": "ASSOC-02"
+   },
+   "120": {
+    "text": "The requested GAS fragment is not available",
+    "entry": "DISC-09"
+   },
+   "121": {
+    "text": "Success, the CAG Version provided by the requesting STA is the same as the latest CAG Version provided by the relevant server",
+    "entry": "ASSOC-10"
+   },
+   "122": {
+    "text": "The STA is not authorized to use GLK per local policy",
+    "entry": "ASSOC-10"
+   },
+   "123": {
+    "text": "Authentication rejected because the password identifier is unknown",
+    "entry": "AUTH-03"
+   },
+   "124": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "125": {
+    "text": "Request denied because source address of request is inconsistent with local MAC address policy",
+    "entry": "ASSOC-05"
+   },
+   "126": {
+    "text": "SAE authentication uses direct hashing, instead of looping, to obtain the PWE",
+    "entry": "AUTH-03"
+   },
+   "127": {
+    "text": "Reserved",
+    "entry": "OTHER-CODE"
+   },
+   "128": {
+    "text": "Requested TCLAS processing has been terminated by the AP due to insufficient QoS capacity",
+    "entry": "ASSOC-08"
+   },
+   "129": {
+    "text": "Requested TCLAS processing has been terminated by the AP due to conflict with higher layer QoS policies",
+    "entry": "ASSOC-08"
+   },
+   "130": {
+    "text": "Association denied because the requesting STA is affiliated with a non-AP MLD that is associated with the AP MLD",
+    "entry": "ASSOC-09"
+   },
+   "131": {
+    "text": "EPCS priority access denied because the non-AP MLD is not authorized to use the service",
+    "entry": "ASSOC-09"
+   },
+   "132": {
+    "text": "EPCS priority access denied due to reason outside the scope of this standard",
+    "entry": "ASSOC-09"
+   },
+   "133": {
+    "text": "Request denied because the requested TID-to-link mapping is unacceptable",
+    "entry": "ASSOC-08"
+   },
+   "134": {
+    "text": "Preferred TID-to-link mapping suggested",
+    "entry": "ASSOC-08"
+   },
+   "135": {
+    "text": "Association denied because the requesting STA does not support EHT features",
+    "entry": "ASSOC-02"
+   },
+   "139": {
+    "text": "Link not accepted because the link on which the (Re)Association Request frame is transmitted is not accepted",
+    "entry": "ASSOC-09"
+   },
+   "140": {
+    "text": "EPCS priority access is temporarily denied because the receiving AP MLD is unable to verify that the non-AP MLD is authorized for an unspecified reason",
+    "entry": "ASSOC-09"
+   },
+   "141": {
+    "text": "Operation parameter update denied because the requested operation parameters or capabilities are not acceptable",
+    "entry": "ASSOC-08"
+   }
+  },
+  "eap_code": {
+   "1": "Request",
+   "2": "Response",
+   "3": "Success",
+   "4": "Failure",
+   "5": "Initiate",
+   "6": "Finish"
+  },
+  "eap_type": {
+   "1": "Identity",
+   "2": "Notification",
+   "3": "Legacy Nak (Response Only)",
+   "4": "MD5-Challenge EAP (EAP-MD5-CHALLENGE)",
+   "5": "One-Time Password EAP (EAP-OTP)",
+   "6": "Generic Token Card EAP (EAP-GTC)",
+   "7": "Allocated",
+   "8": "Allocated",
+   "9": "RSA Public Key Authentication EAP (EAP-RSA-PKA)",
+   "10": "DSS Unilateral EAP (EAP-DSS)",
+   "11": "KEA EAP (EAP-KEA)",
+   "12": "KEA Validate EAP (EAP-KEA-VALIDATE)",
+   "13": "TLS EAP (EAP-TLS)",
+   "14": "Defender Token EAP (EAP-AXENT)",
+   "15": "RSA Security SecurID EAP (EAP-RSA-SECURID)",
+   "16": "Arcot Systems EAP (EAP-ARCOT-SYSTEMS)",
+   "17": "Cisco Wireless EAP / Lightweight EAP (EAP-LEAP)",
+   "18": "GSM Subscriber Identity Modules EAP (EAP-SIM)",
+   "19": "Secure Remote Password SHA1 Part 1 EAP (EAP-SRP-SHA1-PART1)",
+   "20": "Secure Remote Password SHA1 Part 2 EAP (EAP-SRP-SHA1-PART2)",
+   "21": "Tunneled TLS EAP (EAP-TTLS)",
+   "22": "Remote Access Service EAP (EAP-RAS)",
+   "23": "UMTS Authentication and Key Agreement EAP (EAP-AKA)",
+   "24": "3Com Wireless EAP (EAP-3COM-WIRELESS)",
+   "25": "Protected EAP (EAP-PEAP)",
+   "26": "MS-Authentication EAP (EAP-MS-AUTH)",
+   "27": "Mutual Authentication w/Key Exchange EAP (EAP-MAKE)",
+   "28": "CRYPTOCard EAP (EAP-CRYPTOCARD)",
+   "29": "MS-CHAP-v2 EAP (EAP-MS-CHAP-V2)",
+   "30": "DynamID EAP (EAP-DYNAMID)",
+   "31": "Rob EAP (EAP-ROB)",
+   "32": "Protected One-Time Password EAP (EAP-POTP)",
+   "33": "MS-Authentication TLV EAP (EAP-MS-AUTH-TLV)",
+   "34": "SentriNET (EAP-SENTRINET)",
+   "35": "Actiontec Wireless EAP (EAP-ACTIONTEC-WIRELESS)",
+   "36": "Cogent Systems Biometrics Authentication EAP (EAP-COGENT-BIOMETRIC)",
+   "37": "AirFortress EAP (EAP-AIRFORTRESS)",
+   "38": "HTTP Digest EAP (EAP-HTTP-DIGEST)",
+   "39": "SecureSuite EAP (EAP-SECURESUITE)",
+   "40": "DeviceConnect EAP (EAP-DEVICECONNECT)",
+   "41": "Simple Password Exponential Key Exchange EAP (EAP-SPEKE)",
+   "42": "MOBAC EAP (EAP-MOBAC)",
+   "43": "Flexible Authentication via Secure Tunneling EAP (EAP-FAST)",
+   "44": "ZoneLabs EAP (EAP-ZLXEAP)",
+   "45": "Link EAP (EAP-LINK)",
+   "46": "Password Authenticated eXchange EAP (EAP-PAX)",
+   "47": "Pre-Shared Key EAP (EAP-PSK)",
+   "48": "Shared-secret Authentication and Key Establishment EAP (EAP-SAKE)",
+   "49": "Internet Key Exchange v2 EAP (EAP-IKEv2)",
+   "50": "UMTS Authentication and Key Agreement' EAP (EAP-AKA')",
+   "51": "Generalized Pre-Shared Key EAP (EAP-GPSK)",
+   "52": "Password EAP (EAP-pwd)",
+   "53": "Encrypted Key Exchange v1 EAP (EAP-EKEv1)",
+   "55": "Tunneled EAP protocol",
+   "254": "Expanded Type",
+   "255": "Experimental"
+  },
+  "eapol_type": {
+   "0": "EAP Packet",
+   "1": "Start",
+   "2": "Logoff",
+   "3": "Key",
+   "4": "Encapsulated ASF Alert",
+   "5": "MKA",
+   "6": "Announcement (Generic)",
+   "7": "Announcement (Specific)",
+   "8": "Announcement Request"
+  },
+  "auth_alg": {
+   "0": "Open System",
+   "1": "Shared key",
+   "2": "Fast BSS Transition",
+   "3": "Simultaneous Authentication of Equals (SAE)",
+   "4": "FILS Shared Key authentication without PFS",
+   "5": "FILS Shared Key authentication with PFS",
+   "6": "FILS Public Key authentication",
+   "7": "Pre-Association Security Negotiation (PASN)",
+   "128": "Network EAP"
+  }
+ },
+ "other_policy": "Any frame, sequence or metric that no entry matches is stored in out/unknown_events.jsonl as OTHER-* and handed to the discovery agent (Part 3)."
+}

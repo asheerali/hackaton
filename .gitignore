@@ -1,0 +1,49 @@
+# ---------- secrets ----------
+.airframe_salt
+.env
+.env.*
+!.env.example
+ANTHROPIC_API_KEY*
+
+# ---------- Python (backend/) ----------
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.venv/
+
+# ---------- Node / React (frontend/) ----------
+node_modules/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+npm-debug.log*
+.vite/
+
+# ---------- generated at runtime, not source ----------
+out/
+catalog/extensions.json
+
+# ---------- captures and converted data (large; regenerate, don't commit) ----------
+# Raw pcaps (~270 MB) and the tshark-converted captures (~450 MB) are inputs/build
+# products, not source. Regenerate json_full/ from hackaton_airframe/ on the host
+# with `python convert_full.py` (needs tshark). Remove these two lines if you do
+# want the captures themselves versioned (e.g. via Git LFS).
+hackaton_airframe/
+json_full/
+json/
+
+# ---------- editors / OS ----------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+~$*
+
+# ---------- misc scratch ----------
+*.log
