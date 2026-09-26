@@ -62,7 +62,7 @@ app = FastAPI(title="Airframe", version="1.0", lifespan=lifespan)
 # ---------------------------------------------------------------- live data
 @app.get("/api/health")
 def health():
-    return {"ok": True, "replay": REPLAY.state, "agent_mode": fix_agent.mode(), "model": config.AGENT_MODEL,
+    return {"ok": True, "replay": REPLAY.state, "agent_mode": fix_agent.mode(), "model": fix_agent.current_model(),
             "catalog": CATALOG.summary()}
 
 
@@ -79,7 +79,7 @@ def _decorate(snap: dict) -> dict:
     with REPLAY.lock:
         snap["proposals"] = {k: {**v, "success": fix_agent.check_success(eng, v) if v["status"] == "approved" and eng else None}
                              for k, v in PROPOSALS.items()}
-        snap["agent"] = {"mode": fix_agent.mode(), "model": config.AGENT_MODEL}
+        snap["agent"] = {"mode": fix_agent.mode(), "model": fix_agent.current_model()}
         snap["clusters"] = [{k: v for k, v in c.items() if k != "example"} for c in discovery.cluster(eng)] if eng else []
         snap["drafts"] = list(DRAFTS.values())
         snap["catalog"] = CATALOG.summary()

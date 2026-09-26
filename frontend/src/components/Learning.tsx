@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api, fmtT, waitJob, type Draft, type Snapshot } from "../api";
-import { Card, Kpi, Sev } from "./ui";
+import { Card, Kpi, Sev, providerLabel, providerPill } from "./ui";
 
 export function Learning({ snap }: { snap: Snapshot }) {
   const [busy, setBusy] = useState<string | null>(null);
@@ -25,7 +25,7 @@ export function Learning({ snap }: { snap: Snapshot }) {
         <Kpi label="Unmatched events" value={snap.unknown.count} tone={snap.unknown.count ? "warn" : "good"} foot="saved as OTHER, never dropped" />
         <Kpi label="Clusters to review" value={open.length} />
         <Kpi label="Drafts" value={snap.drafts.length} foot={`${snap.drafts.filter((d) => d.status === "adopted").length} adopted`} />
-        <Kpi label="Discovery mode" value={snap.agent.mode === "claude" ? "Claude" : "Offline"} foot={snap.agent.mode === "claude" ? snap.agent.model : "heuristic drafts"} />
+        <Kpi label="Discovery mode" value={snap.agent.mode === "offline" ? "Offline" : providerLabel(snap.agent.mode)} foot={snap.agent.mode === "offline" ? "heuristic drafts" : snap.agent.model} />
       </div>
 
       <Card title="How Part 3 works" sub="Every frame, sequence and metric is matched against the error catalog. Known → incident (Part 1) → fix (Part 2). Unknown → OTHER → clustered → drafted → validated and back-tested → a person approves → the catalog grows and detection updates immediately.">
@@ -62,7 +62,7 @@ function DraftCard({ d }: { d: Draft }) {
   const decide = async (decision: string) => { try { await api.draftDecision(d.draft_id, decision); } catch (x) { setErr(String(x)); } };
   const tone = d.status === "adopted" ? "good" : d.status === "ready_for_review" ? "info" : d.status === "rejected" ? "warn" : "bad";
   return (
-    <Card title={<>Draft {d.draft_id} <span className="pill" style={{ marginLeft: 6 }}>{d.meta.mode === "claude" ? "Claude" : "offline heuristic"}</span></>}
+    <Card title={<>Draft {d.draft_id} <span className="pill" style={{ marginLeft: 6 }}>{providerPill(d.meta.mode, undefined, "offline heuristic")}</span></>}
       sub={`From ${d.cluster.cluster_id}: ${d.cluster.count} events`}
       right={d.status === "ready_for_review" ? <div className="row"><button className="btn good" onClick={() => decide("approve")}>✓ Approve & add to catalog</button><button className="btn danger" onClick={() => decide("reject")}>✕ Reject (mark benign)</button></div> : <span className={`sev ${tone === "good" ? "good" : "info"}`}>{d.status.replaceAll("_", " ")}</span>}>
       {d.meta.note && <div className="callout warn small">{d.meta.note}</div>}

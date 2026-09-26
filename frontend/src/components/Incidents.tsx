@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, fmtT, waitJob, type IncidentDetail, type ProposalRecord, type Snapshot } from "../api";
-import { Card, Sev } from "./ui";
+import { Card, Sev, providerLabel, providerPill } from "./ui";
 
 export function Incidents({ snap, selected, select }: { snap: Snapshot; selected: string | null; select: (id: string) => void }) {
   const [filter, setFilter] = useState<"open" | "all">("open");
@@ -121,7 +121,7 @@ function FixPanel({ id, rec, agent }: { id: string; rec?: ProposalRecord; agent:
   };
   const decide = async (decision: string) => { try { await api.fixDecision(id, decision); } catch (e) { setErr(String(e)); } };
   const p = rec?.proposal;
-  const modeLabel = useMemo(() => (agent.mode === "claude" ? `Claude (${agent.model})` : "Offline catalog playbook"), [agent]);
+  const modeLabel = useMemo(() => providerLabel(agent.mode, agent.model), [agent]);
   return (
     <section className="card">
       <div className="card-head">
@@ -132,7 +132,7 @@ function FixPanel({ id, rec, agent }: { id: string; rec?: ProposalRecord; agent:
       {err && <div className="callout bad">{err}</div>}
       {p && rec && (
         <div className="fix">
-          <div className="row"><span className="pill">{rec.meta.mode === "claude" ? `Claude · ${rec.meta.turns ?? "?"} turns · ${rec.meta.tool_calls?.length ?? 0} tool calls` : "offline playbook"}</span>
+          <div className="row"><span className="pill">{providerPill(rec.meta.mode, rec.meta.turns != null ? `${rec.meta.turns} turns · ${rec.meta.tool_calls?.length ?? 0} tool calls` : undefined)}</span>
             <span className="pill">confidence {Math.round(p.confidence * 100)}%</span><span className="pill">owner: {p.owner}</span><span className="pill">risk: {p.risk}</span>
             <span className="pill">status: {rec.status}</span><span className="spacer" />
             {rec.status === "proposed" && <><button className="btn good" onClick={() => decide("approve")}>✓ Approve</button><button className="btn danger" onClick={() => decide("reject")}>✕ Reject</button><button className="btn" onClick={run} disabled={busy}>↻ Re-run</button></>}

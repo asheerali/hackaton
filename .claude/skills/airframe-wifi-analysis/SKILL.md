@@ -22,7 +22,7 @@ Contracts and agent details: [reference/agents-part2-part3.md](reference/agents-
 | Ingest | tshark 4.6.9 (`-r - -l -T fields`), one process per sensor; JSONL replay for fast demo | Measured 30× faster than scapy; brief provides Wireshark/tshark |
 | Engine + API | Python 3.13, FastAPI + uvicorn, asyncio, in-process state; SSE push every 1 s | Brief provides Python; converter/oracle/benchmark already Python |
 | Dashboard | React 19 + TypeScript + Vite, Recharts, plain CSS variables (light/dark) | Typed, fast live UI; built to static files served by FastAPI → one-command demo |
-| Agents (Part 2/3) | Anthropic Python SDK tool use when `ANTHROPIC_API_KEY` is set; deterministic catalog playbook otherwise (labelled "offline") | No key on this machine; demo must still work |
+| Agents (Part 2/3) | Provider auto-selected: OpenRouter/DeepSeek (`OPENROUTER_API_KEY`) > Claude (`ANTHROPIC_API_KEY`) > deterministic offline playbook/heuristic | User directive 2026-09-27: OpenRouter+DeepSeek must be supported, in its own files, alongside the existing Claude path; no keys on this machine, demo must still work either way |
 | Tests | pytest: unit per stage + golden replay of `json_full/` against dataset-facts | Oracle-driven |
 
 Repo layout: `backend/airframe/` (Python package), `backend/tests/`, `backend/requirements.txt`, `frontend/` (React dashboard, builds to `frontend/dist`), shared data dirs (`hackaton_airframe/`, `json_full/`, `catalog/`, `out/`) at the repo root. `config.ROOT` resolves three parents up from `backend/airframe/config.py`, so it always points at the repo root regardless of cwd.
@@ -86,12 +86,25 @@ backend/airframe/    (Python package; run from backend/: `..\.venv\Scripts\pytho
   runner.py      build_engine/run_batch; Replay thread (speed, pause, inject), RLock shared with agents, publish ~1/s
   server.py      FastAPI: /api/stream (SSE), /api/snapshot, /api/replay, /api/incidents/{id}[/fix[/decision]],
                  /api/devices/{id}, /api/discovery/{cluster}/draft, /api/discovery/drafts/{id}/decision,
-                 /api/debug/inject-unknown (synthetic, labelled), /api/jobs/{key}; serves web/dist
-  agents/tools.py       read-only tools (get_incident, get_device_timeline, query_frames, compare_control,
-                        catalog_lookup, search_history); MAC-blocking output filter
-  agents/fix_agent.py   Part 2: Claude manual tool loop (beta messages, adaptive thinking, json_schema output,
-                        fallbacks="default") or offline playbook; validate(); measure()/check_success() live
-  agents/discovery.py   Part 3: cluster(), draft() (Claude or heuristic), validate(), backtest(), adopt()
+                 /api/debug/inject-unknown (synthetic, labelled), /api/jobs/{key}; serves frontend/dist
+  agents/tools.py             read-only tools (get_incident, get_device_timeline, query_frames, compare_control,
+                              catalog_lookup, search_history); MAC-blocking output filter; tool_specs()/run_tool() shared by every provider
+  agents/llm_loop.py          Claude provider: run_json_agent() - beta messages, tool_use loop, adaptive thinking,
+                              output_config json_schema, fallbacks="default"
+  agents/llm_loop_openrouter.py  OpenRouter/DeepSeek provider: run_json_agent() - same signature as llm_loop.py, but
+                              plain httpx POSTs to OPENROUTER_BASE_URL/chat/completions (OpenAI-compatible shape:
+                              message.tool_calls, response_format via a schema instruction appended to the system
+                              prompt since json_schema strict mode isn't reliable across OpenRouter models). Strips
+                              ```json fences DeepSeek sometimes adds. `client=` param makes it unit-testable with
+                              httpx.MockTransport (see tests/test_openrouter_agent.py) - no network/key needed to test.
+  agents/fix_agent/     Part 2, one module per concern: service.py (mode()/current_model() - provider priority
+                        openrouter>claude>offline, dispatch + fallback-on-failure), claude_backend.py,
+                        openrouter_backend.py (each just calls the matching llm_loop with SYSTEM+PROPOSAL_SCHEMA),
+                        playbook.py (offline), schema.py, validate.py, success.py (measure()/check_success() live), prompts.py
+  agents/discovery/     Part 3, same shape: service.py (draft(), reuses fix_agent.service.mode()), claude_backend.py,
+                        openrouter_backend.py, heuristic.py (offline), cluster.py, backtest.py, adopt.py, rule_convert.py,
+                        validate.py, schema.py, prompts.py
+  agents/prompts/*.txt  system prompts, shared verbatim by every provider (loaded via agents/prompts/__init__.py.load())
 frontend/ (React 19 + TS + Vite + Recharts, builds to frontend/dist)  src/api.ts (types, useSnapshot SSE hook),
      components/{Overview,Incidents,Devices,Air,Learning,Charts,ui}.tsx, styles.css (tokens light/dark, validated
      4-slot palette, status colours)
@@ -104,6 +117,7 @@ Implementation rules learned while building:
 - Keep per-network stats derived from `attempts_all` at read time: joins can precede the AP's first beacon.
 - The UI check adopts a synthetic catalog entry; it restores `catalog/extensions.json` itself, but a running server keeps the entry in memory until restarted.
 - Device channel = its access point's sensor channel (devices are heard probing on every sensor).
+- OpenRouter integration (2026-09-27): reused `httpx` (already a pinned dependency) instead of adding the `openai` package - OpenRouter's Chat Completions API is a plain REST endpoint, no SDK needed. Used `response_format`-by-instruction (schema embedded in the system prompt) rather than OpenRouter's `json_schema` response format, because strict-mode enforcement isn't guaranteed across every model OpenRouter proxies; the existing `validate()` + offline-fallback path in each service.py already tolerates a malformed response, so this is safe either way. `mode()` in `fix_agent/service.py` is the single source of truth for provider priority - `discovery/service.py` imports it rather than duplicating the logic.
 
 ### Streaming rules
 - Timers run on **event time** with a watermark = max event time seen − `ALLOWED_LATENESS_S=3`. "Nothing happened for 30 s" is judged on capture time, never wall time.

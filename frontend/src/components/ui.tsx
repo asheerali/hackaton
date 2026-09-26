@@ -8,6 +8,21 @@ export function Sev({ s }: { s: Severity | "good" | string }) {
   return <span className={`sev ${s}`}><span aria-hidden>{SEV_ICON[s] ?? "●"}</span>{SEV_LABEL[s] ?? s}</span>;
 }
 
+// AI provider names, keyed by the backend's `mode` value (config.AGENT_MODE / mode()).
+const PROVIDER_NAME: Record<string, string> = { claude: "Claude", openrouter: "DeepSeek (OpenRouter)" };
+
+/** "Claude (claude-opus-5)" / "DeepSeek (OpenRouter) (deepseek/deepseek-v4.1-flash)" / "Offline catalog playbook". */
+export function providerLabel(mode: string, model?: string | null): string {
+  const name = PROVIDER_NAME[mode];
+  return name ? `${name}${model ? ` (${model})` : ""}` : "Offline catalog playbook";
+}
+
+/** Short pill text for a proposal/draft's meta.mode: "Claude · 4 turns · 2 tool calls" or "offline playbook". */
+export function providerPill(mode: string, detail?: string, offlineLabel = "offline playbook"): string {
+  const name = PROVIDER_NAME[mode];
+  return name ? `${name}${detail ? ` · ${detail}` : ""}` : offlineLabel;
+}
+
 const STATE: Record<string, { label: string; color: string; icon: string }> = {
   excluded: { label: "Fast-rejected", color: "var(--critical)", icon: "⛔" },
   failing: { label: "Failing to log in", color: "var(--critical)", icon: "✕" },

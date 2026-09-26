@@ -1,4 +1,4 @@
-"""Part 3 orchestration: pick Claude or the offline heuristic, validate, backtest."""
+"""Part 3 orchestration: pick a provider (OpenRouter/DeepSeek, Claude, or the offline heuristic), validate, backtest."""
 
 from __future__ import annotations
 
@@ -6,10 +6,12 @@ import time
 
 from ...engine import Engine
 from ..fix_agent.service import mode
-from . import claude_backend, heuristic
+from . import claude_backend, heuristic, openrouter_backend
 from .backtest import backtest
 from .cluster import cluster
 from .validate import validate
+
+_BACKENDS = {"claude": claude_backend, "openrouter": openrouter_backend}
 
 
 def draft(e: Engine, cluster_id: str, lock) -> dict:
@@ -21,11 +23,12 @@ def draft(e: Engine, cluster_id: str, lock) -> dict:
     m = mode()
     note = None
     t0 = time.time()
-    if m == "claude":
+    backend = _BACKENDS.get(m)
+    if backend is not None:
         try:
-            d = claude_backend.draft(e, c, lock)
+            d = backend.draft(e, c, lock)
         except Exception as exc:
-            note = f"Claude unavailable ({type(exc).__name__}: {str(exc)[:160]}); offline heuristic used."
+            note = f"{m} unavailable ({type(exc).__name__}: {str(exc)[:160]}); offline heuristic used."
             m = "offline"
     if m == "offline":
         with lock:

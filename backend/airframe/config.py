@@ -72,7 +72,18 @@ STAT_ZSCORE = 4.0
 STAT_MIN_COUNT = 20
 
 # --- agents ---
+# auto picks the best available provider: openrouter (DeepSeek) > claude > offline.
+# Set explicitly to pin one: AIRFRAME_AGENT_MODE=claude|openrouter|offline.
+AGENT_MODE = os.environ.get("AIRFRAME_AGENT_MODE", "auto")
 AGENT_MODEL = os.environ.get("AIRFRAME_MODEL", "claude-opus-5")
-AGENT_MODE = os.environ.get("AIRFRAME_AGENT_MODE", "auto")   # auto | claude | offline
 AGENT_MAX_TURNS = 12
 AGENT_MIN_CONFIDENCE = 0.6
+
+# OpenRouter (https://openrouter.ai/docs) - used for the DeepSeek-backed agents in
+# agents/fix_agent/openrouter_backend.py and agents/discovery/openrouter_backend.py.
+OPENROUTER_API_KEY_ENV = "OPENROUTER_API_KEY"
+OPENROUTER_BASE_URL = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+OPENROUTER_MODEL = os.environ.get("AIRFRAME_OPENROUTER_MODEL", "deepseek/deepseek-v4.1-flash")
+OPENROUTER_SITE_URL = os.environ.get("AIRFRAME_SITE_URL", "")   # optional, for OpenRouter's leaderboards
+OPENROUTER_SITE_NAME = os.environ.get("AIRFRAME_SITE_NAME", "Airframe")
+OPENROUTER_TIMEOUT_S = 60.0

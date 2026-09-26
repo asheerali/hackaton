@@ -7,8 +7,16 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # Optional: with a key, Parts 2/3 use Claude; without one they fall back
-      # to the offline catalog playbook (labelled as such in the dashboard).
+      # Optional: Parts 2/3 pick the best available provider automatically -
+      # OpenRouter/DeepSeek first, then Claude, then the offline catalog playbook
+      # (labelled as such in the dashboard either way). Set AIRFRAME_AGENT_MODE to
+      # pin one: claude | openrouter | offline.
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      AIRFRAME_OPENROUTER_MODEL: ${AIRFRAME_OPENROUTER_MODEL:-deepseek/deepseek-v4.1-flash}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      # Optional, shown on OpenRouter's leaderboards - harmless to leave blank.
+      AIRFRAME_SITE_URL: ${AIRFRAME_SITE_URL:-}
+      AIRFRAME_SITE_NAME: ${AIRFRAME_SITE_NAME:-Airframe}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       AIRFRAME_MODEL: ${AIRFRAME_MODEL:-claude-opus-5}
       AIRFRAME_AGENT_MODE: ${AIRFRAME_AGENT_MODE:-auto}

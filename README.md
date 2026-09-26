@@ -32,9 +32,21 @@ Open http://127.0.0.1:8000. The replay starts at 10× speed; use the header to p
 
 ## AI agents (Parts 2 and 3)
 
-- With `ANTHROPIC_API_KEY` set, both agents use Claude (`claude-opus-5`, override with `AIRFRAME_MODEL`) with read-only tools, adaptive thinking, structured JSON output and server-side refusal fallbacks.
-- Without credentials they run an **offline** catalog playbook / heuristic, labelled as such in the UI. Force either with `AIRFRAME_AGENT_MODE=claude|offline`.
-- Agents never change anything: tools are read-only, every claim cites evidence, codes are checked against the IEEE tables, and identifiers stay masked.
+Both agents (the Part 2 fix proposal and the Part 3 catalog-entry draft) share the same read-only
+tools and pick a provider automatically, in this order:
+
+1. **OpenRouter, DeepSeek** (`deepseek/deepseek-v4.1-flash` by default) - used when `OPENROUTER_API_KEY` is set. Override the model with `AIRFRAME_OPENROUTER_MODEL`. Implementation: `backend/airframe/agents/llm_loop_openrouter.py` (the tool-call loop, over plain `httpx` against OpenRouter's OpenAI-compatible Chat Completions API) plus `agents/fix_agent/openrouter_backend.py` and `agents/discovery/openrouter_backend.py`.
+2. **Claude** (`claude-opus-5` by default) - used when `ANTHROPIC_API_KEY` is set and no OpenRouter key is present. Override the model with `AIRFRAME_MODEL`. Implementation: `agents/llm_loop.py`, `agents/fix_agent/claude_backend.py`, `agents/discovery/claude_backend.py`.
+3. **Offline** catalog playbook / heuristic - used when neither key is set. Implementation: `agents/fix_agent/playbook.py`, `agents/discovery/heuristic.py`.
+
+The dashboard always shows which one actually answered (including a note if a provider errored and
+the offline fallback stepped in). Force a specific provider with `AIRFRAME_AGENT_MODE=openrouter|claude|offline`
+instead of auto-detecting from whichever keys are set.
+
+Agents never change anything: tools are read-only, every claim cites evidence, codes are checked
+against the IEEE tables, and identifiers stay masked. Every provider's output goes through the same
+`validate()` guardrails (`agents/fix_agent/validate.py`, `agents/discovery/validate.py`) before it's
+shown or adopted, and falls back to offline automatically if it fails them.
 
 ## Other commands
 

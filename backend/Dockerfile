@@ -11,7 +11,7 @@
 # own directory. Build from the repo root with -f:
 #
 #   docker build -f backend/Dockerfile -t airframe-backend .
-#   docker run --rm -p 8000:8000 -e ANTHROPIC_API_KEY=$env:ANTHROPIC_API_KEY airframe-backend
+#   docker run --rm -p 8000:8000 -e OPENROUTER_API_KEY=$env:OPENROUTER_API_KEY airframe-backend
 #
 # (docker-compose.yml already sets context: . and dockerfile: backend/Dockerfile,
 # so `docker compose up` from the repo root just works.)
@@ -48,10 +48,13 @@ ENV PYTHONUNBUFFERED=1 \
     AIRFRAME_AUTOSTART=1 \
     AIRFRAME_AGENT_MODE=auto
 
-# Anthropic credentials (optional): pass at `docker run -e ANTHROPIC_API_KEY=...`.
-# Without one, Part 2/3 agents fall back to the offline catalog playbook.
-ENV ANTHROPIC_API_KEY="" \
-    AIRFRAME_SALT=""
+# Agent credentials (both optional): pass at `docker run -e OPENROUTER_API_KEY=...`
+# and/or `-e ANTHROPIC_API_KEY=...`. auto mode (the default) prefers OpenRouter/DeepSeek
+# over Claude over the offline catalog playbook - see AGENT_MODE in config.py.
+ENV OPENROUTER_API_KEY="" \
+    ANTHROPIC_API_KEY="" \
+    AIRFRAME_SALT="" \
+    AIRFRAME_SITE_NAME="Airframe"
 
 WORKDIR /app/backend
 EXPOSE 8000
