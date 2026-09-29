@@ -161,6 +161,35 @@ def test_auto_discovery_adopts_without_human_click(client):
         config.DISCOVERY_AUTO = False
 
 
+def test_stray_manual_draft_still_gets_adopted_with_no_decision_call(client):
+    """A draft created through the manual endpoint (kept for API/testing use) is not a loophole
+    back into "someone has to click a button" - once it validates and backtests clean, the
+    same background sweep that runs the auto path picks it up and adopts it on its own."""
+    client.post("/api/debug/inject-unknown", json={"count": 5, "code": 252})
+    cl = next(c for c in client.get("/api/snapshot").json()["clusters"] if c.get("code") == 252)
+    client.post(f"/api/discovery/{cl['cluster_id']}/draft")
+    job = wait_job(client, f"draft:{cl['cluster_id']}")
+    assert job["state"] == "done", job
+    dr = job["result"]
+    assert dr["status"] == "ready_for_review" and dr["trigger"] == "manual"
+
+    config.DISCOVERY_AUTO = True
+    try:
+        def swept():
+            snap = client.get("/api/snapshot").json()
+            d = next((x for x in snap["drafts"] if x["draft_id"] == dr["draft_id"]), None)
+            return d if d and d["status"] == "adopted" else None
+
+        adopted = wait_until(swept, timeout=15)
+        assert adopted["adopted"]["reclassified_events"] == 5
+        # the manual draft's signature must have blocked the auto-loop from drafting the
+        # same cluster a second time (that would double up the catalog entry)
+        matches = [d for d in client.get("/api/snapshot").json()["drafts"] if d["entry"]["reason_codes"] == [252]]
+        assert len(matches) == 1, matches
+    finally:
+        config.DISCOVERY_AUTO = False
+
+
 def test_auto_fix_proposal_for_critical_incident(client):
     """Part 2, "auto analyzed... fastly": a critical incident gets a fix proposal with no click,
     using the fast/small model path (fast=True) rather than the manual full-model one."""

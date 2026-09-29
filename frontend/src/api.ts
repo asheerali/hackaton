@@ -154,6 +154,16 @@ export const api = {
   job: (key: string): Promise<{ state: string; error?: string; result?: unknown }> => fetch(`/api/jobs/${key}`).then((r) => r.json()),
 };
 
+export function nextSyntheticCode(): number {
+  try {
+    const raw = Number(sessionStorage.getItem("af-synth-code-seq") ?? "250");
+    sessionStorage.setItem("af-synth-code-seq", String(raw + 1));
+    return raw;
+  } catch {
+    return 250 + Math.floor(Math.random() * 40);
+  }
+}
+
 export async function waitJob(key: string, onTick?: () => void): Promise<{ state: string; error?: string; result?: unknown }> {
   for (let i = 0; i < 600; i++) {
     const j = await api.job(key);

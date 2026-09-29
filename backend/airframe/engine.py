@@ -231,7 +231,7 @@ class Engine:
                            "open_incidents": [i.id for i in self.inc.top_level() if i.status == "open"][:5]}}
         self.unknown.append(rec)
         self.unknown_frame_by_id[rec["id"]] = f
-        self._feed(f.t, "unknown", f"Unmatched event {rec['id']} ({kind}) saved for Part 3", "unknown", rec["id"])
+        self._feed(f.t, "unknown", f"Unmatched event {rec['id']} ({kind}) saved for the catalog-learning agent", "unknown", rec["id"])
         if self.out_dir:
             with (self.out_dir / "unknown_events.jsonl").open("a", encoding="utf-8") as fh:
                 fh.write(json.dumps(rec) + "\n")
@@ -244,7 +244,7 @@ class Engine:
             if f is None:
                 continue
             ch = self.sensors[f.s].channel if f.s in self.sensors else None
-            what = f"reclassified by Part 3: {f.kind} reason={f.reason} status={f.status} now mapped to {catalog_id}"
+            what = f"reclassified by the catalog-learning agent: {f.kind} reason={f.reason} status={f.status} now mapped to {catalog_id}"
             self._detect(Detection(catalog_id, f.t, "device" if f.client else "site", f.client or f"auto:{eid}",
                                    sensor=f.s, ap=f.ap, device=f.client, net=f.net, channel=ch,
                                    evidence=(f.s, f.n, what), confidence=0.7))

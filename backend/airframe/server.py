@@ -28,7 +28,8 @@ JOBS: dict[str, dict] = {}
 # Background auto-triggers (Part 2 critical auto-analysis, Part 3 auto-discovery). State is
 # reset whenever a new engine appears (a fresh /api/replay start), tracked by id(engine).
 _AUTO_STOP = threading.Event()
-_auto_state = {"engine_id": None, "fix_seen": set(), "discovery_done_sigs": set(), "discovery_inflight": set()}
+_auto_state = {"engine_id": None, "fix_seen": set(), "discovery_done_sigs": set(), "discovery_inflight": set(),
+               "draft_auto_handled": set(), "draft_inflight": set()}
 APPROVALS: dict[str, dict] = {}
 
 
@@ -113,7 +114,8 @@ def _auto_work(eng) -> None:
     if not eng:
         return
     if _auto_state["engine_id"] != id(eng):
-        _auto_state.update(engine_id=id(eng), fix_seen=set(), discovery_done_sigs=set(), discovery_inflight=set())
+        _auto_state.update(engine_id=id(eng), fix_seen=set(), discovery_done_sigs=set(), discovery_inflight=set(),
+                            draft_auto_handled=set(), draft_inflight=set())
 
     if config.AGENT_AUTO_ANALYZE:
         for inc in eng.inc.top_level():
@@ -156,6 +158,30 @@ def _auto_work(eng) -> None:
                 finally:
                     _auto_state["discovery_inflight"].discard(signature)
             threading.Thread(target=_run_draft, daemon=True).start()
+
+        # Defense in depth: a draft that reached ready_for_review any other way (e.g. the
+        # manual endpoint, kept for API/testing use) still gets adopted with no click -
+        # the system stays fully autonomous even if something bypassed the loop above.
+        # A draft that needs_changes (failed validation/backtest) is left alone on purpose:
+        # that one genuinely needs a person, not a rubber stamp.
+        for draft_id, dr in list(DRAFTS.items()):
+            if dr.get("status") != "ready_for_review":
+                continue
+            if draft_id in _auto_state["draft_auto_handled"] or draft_id in _auto_state["draft_inflight"]:
+                continue
+            _auto_state["draft_inflight"].add(draft_id)
+
+            def _finish_draft(did: str = draft_id, d: dict = dr) -> None:
+                try:
+                    d["adopted"] = discovery.auto_approve(eng, d, REPLAY.lock)
+                    d["status"] = "adopted"
+                    _auto_state["draft_auto_handled"].add(did)
+                    REPLAY._publish()
+                except Exception:
+                    pass  # left out of draft_auto_handled: retried on a later poll
+                finally:
+                    _auto_state["draft_inflight"].discard(did)
+            threading.Thread(target=_finish_draft, daemon=True).start()
 
 
 def _sensor_ints(labels: list[str] | None) -> list[int] | None:
@@ -336,6 +362,14 @@ def draft(cluster_id: str):
     def run():
         dr = discovery.draft(eng, cluster_id, REPLAY.lock, trigger="manual")
         DRAFTS[dr["draft_id"]] = dr
+        c = dr["cluster"]
+        # claim this cluster's signature so the background auto-loop doesn't also draft and
+        # adopt it while this manual one is pending - the ready_for_review sweep in _auto_work
+        # still picks this draft up itself, with no /decision call needed.
+        if _auto_state["engine_id"] != id(eng):
+            _auto_state.update(engine_id=id(eng), fix_seen=set(), discovery_done_sigs=set(), discovery_inflight=set(),
+                                draft_auto_handled=set(), draft_inflight=set())
+        _auto_state["discovery_done_sigs"].add((c["kind"], c["what"], c["code"], c["sender"], c["frame_kind"]))
         REPLAY._publish()
         return dr
     return _job(f"draft:{cluster_id}", run)

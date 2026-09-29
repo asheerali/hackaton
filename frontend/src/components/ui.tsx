@@ -92,4 +92,5 @@ export const Icon = {
   sun: <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden><circle cx="8" cy="8" r="3" fill="currentColor" /><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6L13 13M3 13l1.4-1.4M11.6 4.4L13 3" stroke="currentColor" strokeWidth="1.5" /></svg>,
   moon: <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden><path d="M13 10A6 6 0 0 1 6 3a6 6 0 1 0 7 7z" fill="currentColor" /></svg>,
   wifi: <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden><path d="M5 12a10 10 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0" stroke="white" strokeWidth="2.2" fill="none" strokeLinecap="round" /><circle cx="12" cy="19" r="1.6" fill="white" /></svg>,
+  ai: <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden><path d="M8 1.5l1.3 3.7L13 6.5l-3.7 1.3L8 11.5l-1.3-3.7L3 6.5l3.7-1.3z" fill="currentColor" /><path d="M13 10.5l.6 1.7 1.7.6-1.7.6-.6 1.7-.6-1.7-1.7-.6 1.7-.6z" fill="currentColor" /></svg>,
 };

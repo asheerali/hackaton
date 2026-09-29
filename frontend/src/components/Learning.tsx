@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { api, fmtT, waitJob, type Draft, type Snapshot } from "../api";
-import { Card, Kpi, Sev, providerLabel, providerPill } from "./ui";
+import { api, fmtT, nextSyntheticCode, type Draft, type Snapshot } from "../api";
+import { Card, Icon, Kpi, Sev, providerLabel, providerPill } from "./ui";
 
 export function Learning({ snap }: { snap: Snapshot }) {
   const [busy, setBusy] = useState<string | null>(null);
@@ -11,11 +11,7 @@ export function Learning({ snap }: { snap: Snapshot }) {
     try { await fn(); } catch (e) { setErr(String(e)); }
     setBusy(null);
   };
-  const draft = (cid: string) => run(cid, async () => {
-    await api.draft(cid);
-    const j = await waitJob(`draft:${cid}`);
-    if (j.state === "error") throw new Error(j.error);
-  });
+  const inject = (code: number) => run("inject", () => api.inject(25, code));
   const open = snap.clusters.filter((c) => c.count > 0);
   return (
     <div className="grid" style={{ gap: 14 }}>
@@ -28,24 +24,24 @@ export function Learning({ snap }: { snap: Snapshot }) {
         <Kpi label="Discovery mode" value={snap.agent.mode === "offline" ? "Offline" : providerLabel(snap.agent.mode)} foot={snap.agent.mode === "offline" ? "heuristic drafts" : snap.agent.model} />
       </div>
 
-      <Card title="How Part 3 works" sub="Every frame, sequence and metric is matched against the error catalog. Known → incident (Part 1) → fix (Part 2). Unknown → OTHER → clustered → drafted → validated and back-tested → automatically adopted, no human click → the catalog grows and detection updates immediately, and the newly-classified events re-run through the incident workflow.">
+      <Card title="How this works" sub="Every frame, sequence and metric is matched against the error catalog. Known → incident → fix. Unknown → clustered → drafted → validated and back-tested → automatically adopted, no human click → the catalog grows and detection updates immediately, and the newly-classified events re-run through incident detection.">
         <div className="callout info small">
-          This runs on its own in the background as soon as a cluster of unmatched events is large enough — nothing here needs a click. In these 30 minutes of captures every code is already in the catalog, so there are no unmatched events of their own. To demonstrate the loop, inject clearly-marked <b>synthetic</b> test frames: access-point disconnects with reason code 250, which the IEEE 802.11 standard does not define (a vendor-specific code), and watch a draft appear below and adopt itself.
+          This runs on its own in the background as soon as a cluster of unmatched events is large enough — nothing here needs a click. A batch of <b>synthetic</b> test frames (access-point disconnects with a reason code the IEEE 802.11 standard does not define) was already injected automatically when the app started, so opening this tab shows you the live flow: a cluster forming below, then a draft, then it adopting itself into the catalog.
           <div className="row" style={{ marginTop: 8 }}>
-            <button className="btn" disabled={busy === "inject"} onClick={() => run("inject", () => api.inject(25, 250))}>Inject 25 synthetic events (reason 250)</button>
+            <button className="btn" disabled={busy === "inject"} onClick={() => inject(nextSyntheticCode())}>{busy === "inject" ? "Injecting…" : "Inject another batch of 25"}</button>
           </div>
         </div>
         {err && <div className="callout bad" style={{ marginTop: 8 }}>{err}</div>}
       </Card>
 
-      <Card title="Unmatched clusters (OTHER)" sub="Grouped by signature: kind, code or transition, who sent it, frame type.">
+      <Card title="Unmatched clusters (OTHER)" sub="Grouped by signature: kind, code or transition, who sent it, frame type. The catalog-learning agent drafts and adopts each one on its own — nothing to click.">
         <table className="t tabnum">
-          <thead><tr><th>Cluster</th><th>Kind</th><th>Signature</th><th>Events</th><th>Sensors</th><th>Seen</th><th /></tr></thead>
+          <thead><tr><th>Cluster</th><th>Kind</th><th>Signature</th><th>Events</th><th>Sensors</th><th>Seen</th><th>Status</th></tr></thead>
           <tbody>{open.map((c) => (
             <tr key={c.cluster_id}><td className="mono">{c.cluster_id}</td><td>{c.kind}{c.synthetic && <span className="pill" style={{ marginLeft: 6 }}>synthetic</span>}</td>
               <td>{c.frame_kind} by {c.sender ?? "?"}, {c.what} {c.code ?? ""}<div className="muted small">{c.ieee_text}</div></td>
               <td>{c.count}</td><td>{c.sensors.map((s) => `S${s}`).join(" ")}</td><td>{fmtT(c.first_t)}–{fmtT(c.last_t)}</td>
-              <td><button className="btn primary" disabled={busy === c.cluster_id} onClick={() => draft(c.cluster_id)}>{busy === c.cluster_id ? "Drafting…" : "Draft catalog entry"}</button></td></tr>
+              <td><span className="pill pill-ai">{Icon.ai}agent working…</span></td></tr>
           ))}</tbody>
         </table>
         {!open.length && <div className="empty">No unmatched events. Everything seen so far is in the catalog.</div>}
@@ -57,17 +53,17 @@ export function Learning({ snap }: { snap: Snapshot }) {
 }
 
 function DraftCard({ d }: { d: Draft }) {
-  const [err, setErr] = useState<string | null>(null);
   const e = d.entry;
-  const decide = async (decision: string) => { try { await api.draftDecision(d.draft_id, decision); } catch (x) { setErr(String(x)); } };
   const tone = d.status === "adopted" ? "good" : d.status === "ready_for_review" ? "info" : d.status === "rejected" ? "warn" : "bad";
+  const statusLabel = d.status === "ready_for_review"
+    ? <span className="pill pill-ai">{Icon.ai}adopting…</span>
+    : <span className={`sev ${tone === "good" ? "good" : "info"}`}>{d.status.replaceAll("_", " ")}</span>;
   return (
     <Card title={<>Draft {d.draft_id} <span className="pill" style={{ marginLeft: 6 }}>{providerPill(d.meta.mode, undefined, "offline heuristic")}</span>
       <span className="pill" style={{ marginLeft: 6 }}>{d.trigger === "auto" ? "auto · no human click" : "manual"}</span></>}
       sub={`From ${d.cluster.cluster_id}: ${d.cluster.count} events`}
-      right={d.status === "ready_for_review" ? <div className="row"><button className="btn good" onClick={() => decide("approve")}>✓ Approve & add to catalog</button><button className="btn danger" onClick={() => decide("reject")}>✕ Reject (mark benign)</button></div> : <span className={`sev ${tone === "good" ? "good" : "info"}`}>{d.status.replaceAll("_", " ")}</span>}>
+      right={statusLabel}>
       {d.meta.note && <div className="callout warn small">{d.meta.note}</div>}
-      {err && <div className="callout bad small">{err}</div>}
       <div className="row" style={{ margin: "6px 0" }}><Sev s={e.default_severity} /><b>{e.name}</b><span className="pill">{e.category}</span><span className="pill">owner: {e.owner}</span>
         {e.vendor_specific_codes && <span className="pill">vendor-specific code</span>}{e.extends && <span className="pill">extends {e.extends}</span>}</div>
       <p className="ink2" style={{ margin: "4px 0 10px" }}>{e.plain}</p>

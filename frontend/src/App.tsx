@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { api, fmtT, useSnapshot } from "./api";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { api, fmtT, nextSyntheticCode, useSnapshot, type AlertItem } from "./api";
 import { Air } from "./components/Air";
 import { Devices } from "./components/Devices";
 import { Incidents } from "./components/Incidents";
@@ -20,6 +20,29 @@ function useTheme(): [string, () => void] {
   return [theme || (isDark ? "dark" : "light"), () => setTheme(isDark ? "light" : "dark")];
 }
 
+const CriticalToast = memo(function CriticalToast({ alert, isMin, onOpen, onDismiss }:
+  { alert: AlertItem; isMin: boolean; onOpen: (id: string) => void; onDismiss: (id: string) => void }) {
+  return (
+    <div className={`toast ${isMin ? "toast-min" : "pulse"}`} onClick={() => isMin && onOpen(alert.incident_id)}>
+      <span className="toast-badge" aria-hidden>!</span>
+      <div className="toast-frame">
+        <div className="toast-frame-inner">
+          <button className="toast-body" onClick={() => onOpen(alert.incident_id)}>
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <span className="sev critical">Critical</span>
+              <span className="pill">{alert.priority}</span>
+            </div>
+            <strong>{alert.title}</strong>
+            <div className="muted small">{alert.catalog_id} · Sensors: {alert.sensors.join(", ") || "n/a"}</div>
+            <div className="muted tabnum small">detected {fmtT(alert.created_t)}</div>
+          </button>
+          <button className="toast-close" aria-label="Dismiss" onClick={(e) => { e.stopPropagation(); onDismiss(alert.incident_id); }}>✕</button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 export default function App() {
   const { snap, conn } = useSnapshot();
   const [tab, setTab] = useState<Tab>("overview");
@@ -27,7 +50,9 @@ export default function App() {
   const [theme, toggleTheme] = useTheme();
   const pal = usePalette(theme);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-  const openIncident = (id: string) => { setIncident(id); setTab("incidents"); };
+  const [minimized, setMinimized] = useState<Set<string>>(new Set());
+  const minimizeTimers = useRef<Record<string, number>>({});
+  const openIncident = useCallback((id: string) => { setIncident(id); setTab("incidents"); }, []);
 
   const c = snap?.clock;
   const progress = c?.duration ? Math.min(100, (100 * c.t) / c.duration) : 0;
@@ -35,7 +60,28 @@ export default function App() {
   const openCount = snap?.incidents.filter((i) => i.status === "open").length ?? 0;
   const criticalAlerts = [...(snap?.alerts?.filter((a) => a.severity === "critical" && !dismissed.has(a.incident_id)) ?? [])]
     .sort((a, b) => b.created_t - a.created_t);
-  const dismiss = (id: string) => setDismissed((cur) => new Set(cur).add(id));
+  const dismiss = useCallback((id: string) => setDismissed((cur) => new Set(cur).add(id)), []);
+  const criticalIds = criticalAlerts.map((a) => a.incident_id).join(",");
+  const injectedOnStart = useRef(false);
+  useEffect(() => {
+    // Demonstrates the catalog-learning loop unprompted: as soon as the app is up,
+    // seed one batch of synthetic unmatched events so the Learning tab always has a
+    // live "unknown error being found and adopted" flow to show, whenever it's opened.
+    if (!snap || injectedOnStart.current) return;
+    injectedOnStart.current = true;
+    api.inject(25, nextSyntheticCode()).catch(() => {});
+  }, [snap]);
+  useEffect(() => {
+    // real wall-clock timing, independent of replay speed: pop up full-size, then
+    // minimize to a small badge after a few seconds - it never disappears on its own.
+    for (const id of criticalIds ? criticalIds.split(",") : []) {
+      if (minimizeTimers.current[id] == null) {
+        minimizeTimers.current[id] = window.setTimeout(() => {
+          setMinimized((cur) => new Set(cur).add(id));
+        }, 6000);
+      }
+    }
+  }, [criticalIds]);
 
   return (
     <>
@@ -52,7 +98,7 @@ export default function App() {
               {SPEEDS.map((s) => <button key={s} className={c?.speed === s ? "on" : ""} onClick={() => api.replay("speed", s)}>{s === 0 ? "Max" : `${s}×`}</button>)}
             </div>
             <button className="btn" onClick={() => api.replay("start", c?.speed ?? 10)}>{Icon.restart} Restart</button>
-            <span className="pill">{snap ? `AI: ${providerLabel(snap.agent.mode, snap.agent.model)}` : "AI: offline"}</span>
+            <span className="pill pill-ai">{Icon.ai}{snap ? `AI: ${providerLabel(snap.agent.mode, snap.agent.model)}` : "AI: offline"}</span>
             <button className="btn" onClick={toggleTheme} aria-label="Toggle theme">{theme === "dark" ? Icon.sun : Icon.moon}</button>
           </div>
         </div>
@@ -68,23 +114,9 @@ export default function App() {
       </header>
       {snap && criticalAlerts.length > 0 && (
         <div className="toast-stack" role="alert" aria-live="assertive">
-          {criticalAlerts.map((alert) => {
-            const isNew = snap.clock.t - alert.created_t < 8;
-            return (
-              <div key={alert.incident_id} className={`toast ${isNew ? "pulse" : ""}`}>
-                <button className="toast-body" onClick={() => openIncident(alert.incident_id)}>
-                  <div className="row" style={{ justifyContent: "space-between" }}>
-                    <span className="sev critical">Critical{isNew ? " · new" : ""}</span>
-                    <span className="pill">{alert.priority}</span>
-                  </div>
-                  <strong>{alert.title}</strong>
-                  <div className="muted small">{alert.catalog_id} · Sensors: {alert.sensors.join(", ") || "n/a"}</div>
-                  <div className="muted tabnum small">detected {fmtT(alert.created_t)}</div>
-                </button>
-                <button className="toast-close" aria-label="Dismiss" onClick={(e) => { e.stopPropagation(); dismiss(alert.incident_id); }}>✕</button>
-              </div>
-            );
-          })}
+          {criticalAlerts.map((alert) => (
+            <CriticalToast key={alert.incident_id} alert={alert} isMin={minimized.has(alert.incident_id)} onOpen={openIncident} onDismiss={dismiss} />
+          ))}
         </div>
       )}
       <main>
